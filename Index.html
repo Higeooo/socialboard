@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOCIAL BOARD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ======================== 상단 바 ======================== -->
+  <nav id="topbar" class="topbar" hidden>
+    <div class="brand">
+      <span class="brand-mark">●</span>
+      <span class="brand-name">SOCIAL BOARD</span>
+    </div>
+    <div class="topbar-right">
+      <span id="semester-pill" class="pill pill-mint">2026-1학기</span>
+      <span id="user-chip" class="user-chip"></span>
+      <button id="btn-logout" class="btn-ghost">로그아웃</button>
+    </div>
+  </nav>
+
+  <!-- 토스트 -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- ======================== 1. 로그인 ======================== -->
+  <main id="screen-login" class="screen screen-login">
+    <header class="login-hero">
+      <h1 class="display">SOCIAL<br/>BOARD<span class="dot">.</span></h1>
+      <p class="lede">김해율하고 학생들의 생각이 모이는 곳. 학번/이름을 입력하세요.</p>
+    </header>
+
+    <div class="login-grid">
+      <section class="card">
+        <h2 class="card-title">학생 로그인</h2>
+        <p class="muted">담당 교사가 등록한 명단의 학번·이름과 일치해야 합니다.</p>
+        <label class="field">
+          <span>학번</span>
+          <input type="text" id="login-sid" inputmode="numeric" placeholder="예: 10132" />
+        </label>
+        <label class="field">
+          <span>이름</span>
+          <input type="text" id="login-name" placeholder="예: 안지리" />
+        </label>
+        <button class="btn-primary btn-block" id="btn-student-login">학생으로 시작</button>
+      </section>
+
+      <section class="card card-alt">
+        <h2 class="card-title">관리자 로그인</h2>
+        <p class="muted">반·활동 생성, 게시물 작성·모더레이션, 결과물 일괄 다운로드.</p>
+        <label class="field">
+          <span>아이디</span>
+          <input type="text" id="admin-id" placeholder="관리자 아이디" />
+        </label>
+        <label class="field">
+          <span>비밀번호</span>
+          <input type="password" id="admin-pw" placeholder="비밀번호" />
+        </label>
+        <button class="btn-secondary btn-block" id="btn-admin-login">관리자 로그인</button>
+      </section>
+    </div>
+
+    <footer class="login-footer">
+      <span class="dim">© Gimhae Yulha High School · SOCIAL BOARD v2</span>
+    </footer>
+  </main>
+
+  <!-- ======================== 2. 반 목록 ======================== -->
+  <main id="screen-classes" class="screen container" hidden>
+    <header class="page-head">
+      <div>
+        <h2 class="h2">반 게시판 목록</h2>
+        <p class="muted">반을 선택하여 활동에 입장하세요.</p>
+      </div>
+      <div class="head-actions">
+        <button id="btn-new-class" class="btn-primary" hidden>+ 반 만들기</button>
+      </div>
+    </header>
+    <section id="class-grid" class="grid grid-classes"></section>
+  </main>
+
+  <!-- ======================== 3. 활동 목록 ======================== -->
+  <main id="screen-activities" class="screen container" hidden>
+    <header class="page-head">
+      <button class="btn-back" data-back="classes">← 반 목록</button>
+      <div>
+        <h2 class="h2" id="cur-class-title">활동 목록</h2>
+        <p class="muted" id="cur-class-sub"></p>
+      </div>
+      <div class="head-actions">
+        <button id="btn-new-activity" class="btn-primary" hidden>+ 활동 만들기</button>
+      </div>
+    </header>
+    <section id="activity-list" class="stack"></section>
+  </main>
+
+  <!-- ======================== 4. 보드 (자유게시 OR 8 컬럼) ======================== -->
+  <main id="screen-board" class="screen board-screen" hidden>
+    <header class="page-head container">
+      <button class="btn-back" data-back="activities">← 활동 목록</button>
+      <div>
+        <h2 class="h2" id="cur-activity-title">활동</h2>
+        <p class="muted" id="cur-activity-sub"></p>
+      </div>
+      <div class="head-actions">
+        <button id="btn-make-columns" class="btn-secondary" hidden>+ 8개 조 컬럼 만들기</button>
+        <button id="btn-new-post" class="btn-primary">+ 게시물 작성</button>
+        <button id="btn-export" class="btn-ghost" hidden>⇩ CSV 내보내기</button>
+      </div>
+    </header>
+
+    <!-- 자유 게시 모드: 단일 영역 -->
+    <section id="free-area" class="container free-area" hidden></section>
+
+    <!-- 컬럼 모드: 가로 스크롤 -->
+    <section id="columns-area" class="columns-area" hidden></section>
+  </main>
+
+  <!-- ======================== 게시물 작성 모달 ======================== -->
+  <div id="modal-post" class="modal" hidden>
+    <div class="modal-card">
+      <header class="modal-head">
+        <h3>게시물 작성</h3>
+        <button class="icon-btn" data-close="modal-post" aria-label="닫기">✕</button>
+      </header>
+
+      <div class="seg-tabs">
+        <button class="seg active" data-type="basic">일반 게시물</button>
+        <button class="seg" data-type="inquiry">탐구 질문 (5단계)</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="meta-line">
+          <span class="pill pill-mint" id="post-author">작성자</span>
+          <span class="pill pill-soft" id="post-target">조</span>
+        </div>
+
+        <!-- 컬럼 선택 (컬럼 모드일 때만) -->
+        <label class="field" id="post-group-select-wrap" hidden>
+          <span>게시할 조</span>
+          <select id="post-group-select"></select>
+        </label>
+
+        <!-- 일반 게시물 영역 -->
+        <div data-show="basic">
+          <label class="field">
+            <span>제목</span>
+            <input type="text" id="post-title" placeholder="주제를 입력하세요" />
+          </label>
+          <label class="field">
+            <span>내용</span>
+            <textarea id="post-content" rows="6" placeholder="게시물 내용을 입력하세요."></textarea>
+          </label>
+        </div>
+
+        <!-- 탐구 5단계 영역 (제목 필드 없음) -->
+        <div data-show="inquiry" class="inquiry-stack" hidden>
+          <div class="step-card">
+            <span class="step-num">1</span>
+            <div>
+              <strong>관찰 중 궁금했던 점</strong>
+              <textarea id="step1" rows="2" placeholder="관찰 과정에서 어떤 점이 궁금했는지 자유롭게 적어보세요."></textarea>
+            </div>
+          </div>
+          <div class="step-card">
+            <span class="step-num">2</span>
+            <div>
+              <strong>탐구 질문</strong>
+              <textarea id="step2" rows="2" placeholder="궁금증을 구체적인 탐구 질문 문장으로 만들어보세요."></textarea>
+            </div>
+          </div>
+          <div class="step-card">
+            <span class="step-num">3</span>
+            <div>
+              <strong>예상 답변</strong>
+              <textarea id="step3" rows="2" placeholder="내가 생각하는 답을 이유와 함께 적어보세요."></textarea>
+            </div>
+          </div>
+          <div class="step-card">
+            <span class="step-num">4</span>
+            <div>
+              <strong>AI 답변</strong>
+              <textarea id="step4" rows="2" placeholder="AI에게 물어본 답을 내 언어로 정리해서 적어보세요."></textarea>
+            </div>
+          </div>
+          <div class="step-card">
+            <span class="step-num">5</span>
+            <div>
+              <strong>비판적 검토</strong>
+              <textarea id="step5" rows="2" placeholder="내 예상 답변과 AI 답변을 비교하여 부족한 점·다른 점을 검토해보세요."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>파일 첨부 (선택, 10MB 제한 · 동영상 불가)</span>
+          <input type="file" id="post-file" accept="image/*,.pdf,.docx,.pptx,.hwp,.hwpx" />
+        </label>
+      </div>
+
+      <footer class="modal-foot">
+        <button class="btn-ghost" data-close="modal-post">취소</button>
+        <button id="btn-submit-post" class="btn-primary">게시하기</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================== 공용 입력 모달 ======================== -->
+  <div id="modal-prompt" class="modal" hidden>
+    <div class="modal-card narrow">
+      <header class="modal-head">
+        <h3 id="prompt-title">입력</h3>
+        <button class="icon-btn" data-close="modal-prompt">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="muted" id="prompt-desc"></p>
+        <input type="text" id="prompt-input" />
+      </div>
+      <footer class="modal-foot">
+        <button class="btn-ghost" data-close="modal-prompt">취소</button>
+        <button class="btn-primary" id="prompt-ok">확인</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="app_firebase.js"></script>
+</body>
+</html>
