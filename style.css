@@ -595,3 +595,104 @@ textarea { resize: vertical; line-height: 1.55; }
   border: 1px dashed var(--c-outline);
 }
 .empty strong { display: block; font-size: 15px; margin-bottom: 4px; color: var(--c-on-surface); }
+
+/* ============================================================
+   SOCIAL BOARD v2.1 추가 스타일 — 회원 관리
+   ============================================================ */
+
+/* ---------- 회원 관리 탭 ---------- */
+.member-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--c-surface-mid);
+  border-radius: var(--r-pill);
+  width: fit-content;
+  margin-bottom: 24px;
+}
+.member-tab {
+  padding: 10px 24px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--c-on-surface-variant);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 160ms ease;
+  border: none;
+  cursor: pointer;
+}
+.member-tab.active {
+  background: var(--c-surface-bright);
+  color: var(--c-on-surface);
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- 회원 패널 ---------- */
+.member-panel { padding-bottom: 40px; }
+
+/* ---------- 회원 테이블 ---------- */
+.member-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--c-surface-bright);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+}
+.member-table thead tr {
+  background: var(--c-surface-low);
+  border-bottom: 2px solid var(--c-outline);
+}
+.member-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--c-on-surface-variant);
+  letter-spacing: 0.02em;
+}
+.member-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-outline);
+  color: var(--c-on-surface);
+}
+.member-table tbody tr:last-child td { border-bottom: none; }
+.member-table tbody tr:hover { background: var(--c-surface-low); }
+.member-table .action-cell { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.member-table .mini-btn {
+  font-size: 12px; padding: 5px 12px; border-radius: var(--r-pill);
+  background: var(--c-surface-mid); border: none;
+  color: var(--c-on-surface-variant); cursor: pointer;
+  font-weight: 600; transition: all 120ms ease;
+}
+.member-table .mini-btn:hover { background: var(--c-surface-high); }
+.member-table .mini-btn.danger {
+  background: var(--c-error-soft); color: var(--c-error);
+}
+.member-table .mini-btn.success {
+  background: var(--c-secondary-mint); color: #0c4a3a;
+}
+.member-table .expired-row td { color: var(--c-on-surface-variant); }
+
+/* ---------- 코드 값 표시 ---------- */
+.code-val {
+  font-family: 'Courier New', monospace;
+  background: var(--c-surface-low);
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--c-primary);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- 코드 추가 폼 ---------- */
+.code-form {
+  padding: 20px 24px;
+}
+.code-form h3 { color: var(--c-on-surface); }
+@media (max-width: 760px) {
+  .code-form > div { grid-template-columns: 1fr !important; }
+  .code-form button { height: auto !important; padding: 14px; }
+}
