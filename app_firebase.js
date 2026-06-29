@@ -208,6 +208,8 @@ async function api(action, payload = {}) {
     case 'code.list':            return fbCodeList(payload);
     case 'code.create':          return fbCodeCreate(payload);
     case 'code.delete':          return fbCodeDelete(payload);
+    case 'meta.getSemester':     return fbGetSemesterForUI(payload);
+    case 'meta.setSemester':     return fbSetSemester(payload);
     default: throw new Error('Unknown action: ' + action);
   }
 }
@@ -260,6 +262,19 @@ async function fbAdminLogin({ id, password }) {
 async function fbGetMeta() {
   const meta = await fbGet('/meta');
   return { semester: (meta && meta.activeSemester) || '2026-1' };
+}
+
+async function fbGetSemesterForUI({ token }) {
+  verifyAdmin(token);
+  const meta = await fbGet('/meta');
+  return { currentSemester: (meta && meta.activeSemester) || '2026-1' };
+}
+
+async function fbSetSemester({ semester, token }) {
+  verifyAdmin(token);
+  if (!semester || semester.trim() === '') throw new Error('학기명을 입력하세요.');
+  await fbPatch('/meta', { activeSemester: semester.trim() });
+  return { ok: true, semester: semester.trim() };
 }
 
 // ── 회원 관리 ─────────────────────────────────────────────────
@@ -945,7 +960,7 @@ async function exportCsv() {
 //  UI — 회원 관리 화면
 // ============================================================
 
-let memberTab = 'pending'; // 'pending' | 'active' | 'codes'
+let memberTab = 'pending'; // 'pending' | 'active' | 'codes' | 'semester'
 
 async function openMembers() {
   show('screen-members');
@@ -958,9 +973,11 @@ function switchMemberTab(tab) {
   $('#member-pending').hidden = (tab !== 'pending');
   $('#member-active').hidden  = (tab !== 'active');
   $('#member-codes').hidden   = (tab !== 'codes');
+  $('#member-semester').hidden = (tab !== 'semester');
   if (tab === 'pending') renderPending();
   if (tab === 'active')  renderActive();
   if (tab === 'codes')   renderCodes();
+  if (tab === 'semester') renderSemesterSettings();
 }
 
 async function renderPending() {
@@ -1103,6 +1120,44 @@ async function renderCodes() {
           toast('삭제했습니다.', 'success'); renderCodes();
         } catch(e) { toast(e.message, 'error'); }
       });
+    });
+  } catch(e) { root.innerHTML = `<p class="muted">오류: ${escapeHtml(e.message)}</p>`; }
+}
+
+async function renderSemesterSettings() {
+  const root = $('#member-semester');
+  root.innerHTML = '<p class="muted">불러오는 중…</p>';
+  try {
+    const meta = await api('meta.getSemester', { token: state.adminToken });
+    const current = meta.currentSemester;
+    root.innerHTML = `
+      <div class="semester-form card" style="max-width:500px;padding:32px;">
+        <h3 style="margin:0 0 6px;font-size:18px;font-weight:700;">현재 학기</h3>
+        <p class="muted" style="margin-bottom:24px;font-size:14px;">모든 학생들이 로그인할 때 이 학기를 보게 됩니다.</p>
+        
+        <div style="background:var(--c-surface-low);padding:16px;border-radius:var(--r-md);margin-bottom:20px;">
+          <p style="margin:0 0 8px;font-size:13px;color:var(--c-on-surface-variant);font-weight:600;">현재 설정된 학기</p>
+          <p style="margin:0;font-size:24px;font-weight:700;color:var(--c-primary);">${escapeHtml(current)}</p>
+        </div>
+
+        <label class="field">
+          <span>새로운 학기명 입력</span>
+          <input id="semester-input" type="text" placeholder="예: 2026-2" value="${escapeHtml(current)}" />
+        </label>
+        <p class="muted" style="margin-top:8px;font-size:12px;">예시: 2026-1, 2026-2, 2025-1학기 등</p>
+
+        <button class="btn-primary" id="btn-save-semester" style="width:100%;padding:14px;font-size:16px;">저장하기</button>
+      </div>`;
+
+    root.querySelector('#btn-save-semester').addEventListener('click', async () => {
+      const newSemester = root.querySelector('#semester-input').value.trim();
+      if (!newSemester) return toast('학기명을 입력해 주세요.', 'error');
+      if (newSemester === current) return toast('이미 설정되어 있는 학기입니다.', 'error');
+      try {
+        await api('meta.setSemester', { semester: newSemester, token: state.adminToken });
+        toast(`학기를 "${newSemester}"로 변경했습니다. 학생들이 재로그인하면 적용됩니다.`, 'success');
+        renderSemesterSettings();
+      } catch(e) { toast(e.message, 'error'); }
     });
   } catch(e) { root.innerHTML = `<p class="muted">오류: ${escapeHtml(e.message)}</p>`; }
 }
