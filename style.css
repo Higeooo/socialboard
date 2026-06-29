@@ -696,3 +696,18 @@ textarea { resize: vertical; line-height: 1.55; }
   .code-form > div { grid-template-columns: 1fr !important; }
   .code-form button { height: auto !important; padding: 14px; }
 }
+
+/* ---------- 학기 설정 폼 ---------- */
+.semester-form {
+  background: var(--c-surface-bright);
+  border: 1px solid rgba(194, 202, 176, 0.4);
+}
+.semester-form h3 { color: var(--c-on-surface); }
+.semester-form input {
+  font-size: 16px;
+  padding: 14px 16px;
+}
+.semester-form button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+}
