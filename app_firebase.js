@@ -14,7 +14,7 @@ const FB_URL     = 'https://yulha-2026-1-default-rtdb.asia-southeast1.firebaseda
 const FB_STORAGE = 'yulha-2026-1.appspot.com';
 
 // 버전이 바뀌면 구버전 세션 자동 삭제
-const APP_VERSION = 'v3';
+const APP_VERSION = 'v4';
 if (sessionStorage.getItem('sb.version') !== APP_VERSION) {
   sessionStorage.clear();
   sessionStorage.setItem('sb.version', APP_VERSION);
@@ -160,13 +160,25 @@ function verifyAdmin(token) {
     throw new Error('관리자 권한이 없습니다.');
 }
 async function fbUploadFile(base64, fileName, mime) {
+  if (FB_STORAGE.includes('YOUR_PROJECT_ID')) {
+    throw new Error('Storage 설정이 안 되어 있습니다. app_firebase.js의 FB_STORAGE 값을 실제 프로젝트 ID로 교체하세요. (예: gimhae-lesson-2026.appspot.com)');
+  }
   const ext  = fileName.split('.').pop();
   const path = 'uploads/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
   const url  = 'https://firebasestorage.googleapis.com/v0/b/' + FB_STORAGE
              + '/o?uploadType=media&name=' + encodeURIComponent(path);
   const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': mime }, body: bytes });
-  if (!r.ok) throw new Error('파일 업로드 실패 (' + r.status + ')');
+  let r;
+  try {
+    r = await fetch(url, { method: 'POST', headers: { 'Content-Type': mime }, body: bytes });
+  } catch (networkErr) {
+    throw new Error('Storage 서버에 연결할 수 없습니다. Firebase Console에서 Storage가 활성화되어 있는지, FB_STORAGE 값이 정확한지 확인하세요.');
+  }
+  if (!r.ok) {
+    if (r.status === 403) throw new Error('Storage 권한 오류(403). Storage 보안 규칙을 테스트 모드로 설정하세요.');
+    if (r.status === 404) throw new Error('Storage 버킷을 찾을 수 없습니다(404). FB_STORAGE 값이 정확한지 확인하세요.');
+    throw new Error('파일 업로드 실패 (HTTP ' + r.status + ')');
+  }
   const d = await r.json();
   return 'https://firebasestorage.googleapis.com/v0/b/' + FB_STORAGE
        + '/o/' + encodeURIComponent(path) + '?alt=media&token=' + d.downloadTokens;
@@ -600,6 +612,7 @@ async function enterApp() {
     ? `<strong>관리자</strong>`
     : `<span>${escapeHtml(u.sid)}</span>&nbsp;${escapeHtml(u.name)}`;
   $('#btn-members').hidden = !isAdmin();
+  if (!isAdmin() && $('#btn-members')) $('#btn-members').remove();
   showHome();
 }
 
@@ -624,7 +637,11 @@ function showHome() {
 // ── 강의노트 목록 ────────────────────────────────────────────
 async function openNotes() {
   show('screen-notes');
-  $('#btn-new-note').hidden = !isAdmin();
+  if (isAdmin()) {
+    $('#btn-new-note').hidden = false;
+  } else if ($('#btn-new-note')) {
+    $('#btn-new-note').remove();
+  }
   const root = $('#notes-list');
   root.innerHTML = '<p class="muted">불러오는 중…</p>';
   try {
@@ -700,9 +717,10 @@ async function openNoteDetail(noteId) {
     if (n.fileUrl) {
       const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(n.fileUrl);
       if (isImg) {
-        html += `<div class="note-img-wrap"><img src="${escapeHtml(n.fileUrl)}" alt="${escapeHtml(n.fileName||'이미지')}" /></div>`;
+        html += `<div class="note-img-wrap"><img src="${escapeHtml(n.fileUrl)}" alt="${escapeHtml(n.fileName||'이미지')}" /></div>
+          <a class="n-file" href="${escapeHtml(n.fileUrl)}" download="${escapeHtml(n.fileName||'image')}" target="_blank" rel="noopener">⬇ ${escapeHtml(n.fileName||'이미지')} 다운로드</a>`;
       } else {
-        html += `<a class="n-file" href="${escapeHtml(n.fileUrl)}" target="_blank" rel="noopener">📎 ${escapeHtml(n.fileName||'첨부파일')}</a>`;
+        html += `<a class="n-file" href="${escapeHtml(n.fileUrl)}" download="${escapeHtml(n.fileName||'file')}" target="_blank" rel="noopener">⬇ ${escapeHtml(n.fileName||'첨부파일')} 다운로드</a>`;
       }
     }
     $('#note-detail-body').innerHTML = html || '<p class="muted">내용이 없습니다.</p>';
@@ -871,8 +889,13 @@ async function openClass(classId, className) {
   state.cur.classId = classId; state.cur.className = className;
   $('#cur-class-title').textContent = className + ' / 활동 목록';
   $('#cur-class-sub').textContent = state.semester + '학기';
-  $('#btn-new-activity').hidden  = !isAdmin();
-  $('#btn-clear-posts').hidden   = !isAdmin();
+  if (isAdmin()) {
+    $('#btn-new-activity').hidden = false;
+    $('#btn-clear-posts').hidden  = false;
+  } else {
+    if ($('#btn-new-activity')) $('#btn-new-activity').remove();
+    if ($('#btn-clear-posts'))  $('#btn-clear-posts').remove();
+  }
   show('screen-activities');
   await renderActivities();
 }
