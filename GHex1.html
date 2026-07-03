@@ -70,9 +70,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans
 .gr input{flex:1;padding:10px 13px;border:2px solid var(--line);border-radius:10px;
           font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink);}
 .gr input:focus{outline:none;border-color:var(--accent);}
-.step-bar{background:var(--surface);border-radius:11px;padding:11px 14px;margin-bottom:10px;
+.step-bar{background:var(--surface);border-radius:11px;padding:14px 16px 12px;margin-bottom:10px;
           box-shadow:0 2px 8px rgba(27,42,74,.08);}
 .slb{font-size:13px;font-weight:800;margin-bottom:2px;} .sds{font-size:11.5px;color:var(--ink-soft);}
+.stepper{display:flex;align-items:flex-start;margin-bottom:10px;}
+.step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;}
+.step .dot{width:26px;height:26px;border-radius:50%;background:var(--bg-soft);color:var(--ink-faint);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+  border:2px solid var(--bg-soft);z-index:2;transition:all .2s;}
+.step .lb{font-size:11px;color:var(--ink-faint);font-weight:700;margin-top:6px;white-space:nowrap;transition:color .2s;}
+.step:not(:last-child)::after{content:'';position:absolute;top:13px;left:calc(50% + 16px);
+  width:calc(100% - 32px);height:2px;background:var(--line);z-index:1;}
+.step.done .dot{background:var(--ink);color:#fff;border-color:var(--ink);}
+.step.done .lb{color:var(--ink);}
+.step.done:not(:last-child)::after{background:var(--ink);}
+.step.now .dot{background:#fff;color:var(--accent);border-color:var(--accent);}
+.step.now .lb{color:var(--ink);}
 .guide{background:var(--bg-soft);border-radius:11px;padding:11px 14px;margin-bottom:10px;
        font-size:12.5px;color:var(--ink);line-height:1.6;}
 .guide b{color:var(--ink);font-weight:700;}
@@ -99,7 +112,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans
 .lw{margin-bottom:10px;display:none;} .lt{font-size:13px;font-weight:800;margin-bottom:7px;padding-left:3px;}
 .ac{background:var(--surface);border-radius:12px;padding:12px 13px;box-shadow:0 2px 8px rgba(27,42,74,.08);
     margin-bottom:7px;border:1px solid var(--line);}
-.ah{font-size:13px;font-weight:800;margin-bottom:5px;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;}
+.ac.ac-writing{border:1.5px solid var(--accent);}
+.ah{font-size:13px;font-weight:800;margin-bottom:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ac-num{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--bg-soft);
+  padding:2px 9px;border-radius:20px;}
+.ac-status{font-size:11px;font-weight:700;color:#fff;background:var(--accent);
+  padding:2px 9px;border-radius:20px;display:none;}
+.ac-writing .ac-status{display:inline-block;}
 .adel{margin-left:auto;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:700;}
 .ab{font-size:12.5px;color:var(--ink-soft);line-height:1.65;} .ak{font-weight:700;color:var(--ink);}
 .sw{display:none;margin-top:4px;}
@@ -324,8 +343,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans
 </div>
 <div class="tab-content" id="tab-arrow"><div id="mw"><div class="hd"><h1>🗺️ 김해의 인구 흐름 그리기</h1><p>읽기자료와 데이터를 근거로 지역 간 인구 흐름을 흐름로 표현해봅시다</p></div>
 <div class="gr"><input id="gn" type="text" placeholder="모둠 이름 입력 (예: 1모둠)"/></div>
-<div class="guide"><b>활동 방법</b> — 출발지를 탭 → 도착지를 탭 → 근거 작성 → 흐름 시각화 제출<br>읽기자료·데이터를 근거로 2개 이상의 이동 루트를 표현해 보세요.</div>
-<div class="step-bar" id="sb"><div class="slb" id="sl">① 지도에서 네 지역의 위치를 확인하세요</div><div class="sds" id="sd">지역을 탭하면 지도가 자동으로 확대됩니다</div></div>
+<div class="guide"><b>활동 방법</b> — 출발지를 탭 → 도착지를 탭 → 근거 작성 → 흐름 시각화 제출<br>읽기자료·데이터를 근거로 <b>2개 이상</b>의 이동 루트를 표현해 보세요.</div>
+<div class="step-bar" id="sb">
+  <div class="stepper">
+    <div class="step now" id="step1"><div class="dot">1</div><div class="lb">출발지</div></div>
+    <div class="step" id="step2"><div class="dot">2</div><div class="lb">도착지</div></div>
+    <div class="step" id="step3"><div class="dot">3</div><div class="lb">근거 작성</div></div>
+  </div>
+  <div class="slb" id="sl">① 출발지를 누르세요</div>
+  <div class="sds" id="sd">지역 또는 창원·부산을 선택하세요</div>
+</div>
 <div class="mc" id="mc">
 <svg id="ms" viewBox="0 0 480 430" xmlns="http://www.w3.org/2000/svg"><defs><marker id="mk-arrow" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#1b2a4a"/></marker><marker id="mk-tmp" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#3a4a60"/></marker></defs><rect width="480" height="430" fill="#f4f7fa"/><path d="M 266.7,351.0 L 265.7,353.0 L 271.2,355.8 L 271.1,357.5 L 272.6,358.1 L 270.6,359.5 L 270.2,362.2 L 274.8,367.2 L 277.3,367.3 L 276.4,370.8 L 273.1,370.1 L 268.2,371.7 L 269.0,378.6 L 271.3,381.7 L 265.5,382.9 L 257.6,372.5 L 257.9,370.7 L 259.3,370.3 L 260.8,371.8 L 262.7,371.7 L 263.7,369.0 L 266.7,366.4 L 265.7,366.3 L 264.9,362.9 L 259.9,359.4 L 250.9,358.9 L 248.4,360.6 L 235.1,364.0 L 232.5,367.6 L 232.7,370.6 L 231.3,373.2 L 223.1,371.8 L 220.6,374.4 L 216.1,374.8 L 213.2,376.8 L 207.8,376.1 L 205.3,373.4 L 202.5,373.1 L 199.4,370.8 L 190.9,372.6 L 187.5,370.6 L 183.3,372.0 L 181.3,374.0 L 177.1,372.8 L 174.1,373.5 L 173.1,375.4 L 164.3,375.6 L 162.8,374.2 L 153.8,372.2 L 146.6,367.0 L 141.1,364.9 L 136.8,360.0 L 129.5,361.0 L 128.1,365.6 L 122.3,362.2 L 117.0,364.0 L 114.3,362.6 L 110.7,362.7 L 109.9,358.6 L 112.5,352.3 L 113.9,342.4 L 113.3,338.1 L 116.4,331.4 L 116.2,328.8 L 121.2,324.9 L 122.2,320.6 L 121.2,315.5 L 117.0,313.5 L 114.4,310.4 L 114.9,309.2 L 100.8,310.2 L 94.3,308.4 L 87.7,298.3 L 88.5,296.6 L 86.4,292.3 L 86.3,287.1 L 84.5,285.7 L 84.4,283.8 L 87.4,281.8 L 89.4,278.6 L 91.4,263.4 L 87.8,257.1 L 84.6,259.2 L 83.2,258.2 L 82.4,249.7 L 76.3,240.4 L 72.3,227.2 L 73.3,222.7 L 66.8,210.9 L 66.9,207.6 L 65.2,205.7 L 65.9,199.8 L 67.1,198.3 L 63.9,196.0 L 62.0,184.5 L 57.5,181.5 L 56.4,179.2 L 54.1,178.9 L 53.9,177.5 L 52.1,178.3 L 52.4,176.3 L 49.6,176.1 L 50.6,174.8 L 48.9,173.7 L 50.8,173.3 L 49.6,170.4 L 50.8,168.5 L 52.5,169.5 L 55.0,167.2 L 69.6,168.9 L 76.3,166.5 L 73.5,164.0 L 72.1,160.2 L 74.7,155.6 L 74.5,149.7 L 79.4,145.9 L 84.6,151.4 L 97.0,158.7 L 104.5,157.0 L 108.5,152.1 L 108.9,145.6 L 107.3,138.4 L 108.4,136.9 L 112.3,135.9 L 117.1,136.1 L 117.2,126.3 L 118.2,126.0 L 120.5,128.9 L 119.3,132.9 L 120.8,133.2 L 125.5,128.3 L 126.8,124.3 L 133.4,117.7 L 146.4,116.2 L 159.2,109.3 L 169.5,96.5 L 178.0,78.5 L 182.6,74.6 L 193.0,68.9 L 206.6,66.9 L 244.5,47.1 L 251.2,47.1 L 256.3,52.1 L 260.0,65.1 L 262.3,65.0 L 264.1,69.9 L 262.1,70.0 L 265.1,79.8 L 268.9,83.8 L 282.0,88.3 L 301.4,87.4 L 307.9,88.9 L 321.1,98.5 L 347.6,124.4 L 354.1,125.5 L 367.2,130.8 L 374.0,135.9 L 378.0,141.9 L 379.3,146.4 L 380.8,161.7 L 388.6,171.2 L 390.2,176.3 L 394.2,181.2 L 400.8,186.0 L 406.0,187.7 L 417.8,195.6 L 427.1,205.3 L 431.1,215.1 L 413.2,260.0 L 407.9,265.6 L 402.6,269.0 L 386.9,274.6 L 363.8,278.5 L 354.2,278.7 L 348.7,274.6 L 343.8,276.2 L 331.6,286.3 L 320.9,291.4 L 318.6,289.5 L 316.8,290.8 L 311.7,283.2 L 309.1,282.8 L 307.8,286.0 L 307.3,284.4 L 309.0,282.7 L 308.2,282.5 L 303.0,286.8 L 308.6,293.0 L 302.9,293.3 L 293.2,296.4 L 284.3,294.3 L 281.1,294.8 L 275.6,300.5 L 272.6,301.1 L 267.3,308.7 L 262.5,312.9 L 269.7,325.0 L 269.6,331.2 L 276.3,338.7 L 274.6,343.8 L 276.1,353.4 L 266.7,351.0 Z" fill="#eaf0f6" stroke="#2a3a5a" stroke-width="2.8" stroke-linejoin="round"/><text x="330" y="100" font-family="-apple-system,'Noto Sans KR'" font-size="14" font-weight="800" fill="#2a3a5a" opacity=".25">김해시</text><g id="tile-juchon" onclick="hN('juchon')" style="cursor:pointer;"><path id="rp-juchon" d="M 194.0,213.9 L 201.7,217.5 L 202.6,219.0 L 204.2,220.1 L 208.0,221.7 L 210.2,224.0 L 213.3,224.0 L 216.9,222.8 L 218.9,224.8 L 220.8,224.2 L 222.3,222.6 L 223.5,223.7 L 228.3,222.0 L 231.1,217.1 L 232.9,217.3 L 235.0,220.7 L 237.0,222.2 L 239.3,222.9 L 240.3,225.1 L 242.4,226.4 L 243.7,229.4 L 244.2,234.8 L 243.1,236.9 L 243.0,240.4 L 243.6,243.5 L 245.4,244.0 L 246.3,245.1 L 244.3,249.5 L 241.8,251.8 L 241.6,252.8 L 239.4,254.3 L 236.6,259.5 L 236.1,264.9 L 234.8,267.4 L 235.3,269.0 L 234.9,269.7 L 234.1,269.4 L 232.6,272.0 L 234.0,272.8 L 235.9,275.0 L 237.2,280.6 L 234.2,281.8 L 232.9,282.9 L 229.8,284.1 L 228.7,283.9 L 227.6,284.7 L 227.1,290.7 L 228.9,293.2 L 229.2,295.0 L 223.1,300.2 L 219.7,304.9 L 219.2,306.7 L 207.9,299.8 L 207.7,299.0 L 208.6,298.9 L 208.6,298.0 L 207.3,295.9 L 205.2,293.9 L 205.1,291.9 L 203.9,290.1 L 203.2,287.2 L 201.8,285.2 L 199.2,283.8 L 199.3,284.3 L 196.3,286.7 L 190.8,288.5 L 185.9,288.9 L 181.5,288.1 L 177.4,288.7 L 174.3,288.6 L 172.6,288.0 L 170.8,288.5 L 167.8,287.3 L 161.9,283.1 L 161.3,283.8 L 161.8,283.1 L 161.1,283.1 L 159.1,280.9 L 155.5,279.4 L 156.0,278.3 L 155.3,276.7 L 158.4,276.6 L 160.3,275.0 L 161.4,273.0 L 163.3,272.7 L 164.0,271.9 L 167.4,271.7 L 167.0,270.7 L 167.9,265.2 L 167.4,263.0 L 168.1,261.8 L 169.5,261.2 L 170.0,258.6 L 171.0,258.3 L 171.6,251.1 L 171.5,249.2 L 166.4,240.4 L 170.6,239.4 L 172.0,235.9 L 172.8,231.4 L 177.7,230.7 L 178.0,229.7 L 179.5,229.6 L 178.8,227.9 L 180.5,226.1 L 179.5,223.8 L 181.6,224.3 L 187.9,218.6 L 189.3,218.6 L 189.4,215.6 L 190.1,215.9 L 194.0,213.9 Z" fill="#fbeed5" stroke="#d4820a" stroke-width="2.4"/><text x="203.1" y="264.4" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="11.5" font-weight="800" fill="#7a4200">🏭 주촌면</text></g>
 <g id="tile-jangyu" onclick="hN('jangyu')" style="cursor:pointer;"><path id="rp-jangyu" d="M 225.8,338.6 L 230.1,340.7 L 232.5,341.1 L 245.9,337.4 L 248.3,337.4 L 250.1,338.4 L 254.9,343.0 L 267.1,350.1 L 265.7,353.0 L 268.5,355.0 L 271.2,355.8 L 271.1,357.5 L 272.6,358.1 L 270.6,359.5 L 270.2,362.2 L 272.5,363.7 L 273.7,366.4 L 274.8,367.2 L 275.9,366.9 L 277.3,367.3 L 276.7,367.8 L 276.4,370.8 L 275.4,370.2 L 274.3,370.6 L 273.1,370.1 L 270.9,370.8 L 269.6,370.5 L 268.2,371.7 L 269.0,372.9 L 269.0,378.6 L 271.3,381.7 L 270.2,382.5 L 269.8,381.9 L 268.7,382.6 L 268.2,382.1 L 265.5,382.9 L 257.6,372.5 L 257.9,370.7 L 259.3,370.3 L 260.8,371.8 L 262.7,371.7 L 263.7,369.0 L 264.8,367.8 L 266.4,367.4 L 266.7,366.4 L 265.7,366.3 L 264.9,362.9 L 260.9,360.6 L 259.9,359.4 L 257.3,359.8 L 255.3,359.1 L 253.5,359.5 L 250.9,358.9 L 249.9,359.2 L 248.4,360.6 L 244.5,361.7 L 242.0,361.6 L 240.5,363.1 L 238.5,362.8 L 235.1,364.0 L 234.2,364.9 L 234.8,365.5 L 233.0,366.6 L 232.5,367.6 L 232.7,370.6 L 231.3,373.2 L 228.5,372.2 L 223.1,371.8 L 220.6,374.4 L 218.2,375.1 L 216.1,374.8 L 214.3,375.4 L 213.2,376.8 L 207.8,376.1 L 205.3,373.4 L 203.4,372.8 L 202.5,373.1 L 201.3,371.6 L 199.4,370.8 L 196.4,372.1 L 194.2,371.4 L 190.9,372.6 L 187.5,370.6 L 183.3,372.0 L 182.6,373.3 L 181.3,374.0 L 178.9,374.0 L 177.1,372.8 L 174.1,373.5 L 173.1,375.4 L 170.4,374.9 L 166.9,375.7 L 164.3,375.6 L 162.8,374.2 L 159.3,374.1 L 153.8,372.2 L 148.2,368.8 L 146.6,367.0 L 141.1,364.9 L 140.7,363.8 L 137.2,361.2 L 136.8,360.0 L 134.8,360.8 L 129.5,361.0 L 129.6,363.2 L 128.1,365.6 L 122.3,362.2 L 117.0,364.0 L 116.4,363.1 L 114.3,362.6 L 110.7,362.7 L 110.9,360.1 L 109.9,358.6 L 110.6,358.1 L 111.0,354.6 L 112.5,352.3 L 113.0,343.7 L 113.9,342.4 L 113.3,338.1 L 116.4,331.4 L 116.2,328.8 L 117.6,328.1 L 119.4,325.6 L 121.2,324.9 L 122.2,320.6 L 121.0,317.0 L 121.5,313.7 L 126.5,310.5 L 127.9,308.4 L 130.9,308.0 L 133.4,308.4 L 137.5,306.6 L 139.8,306.5 L 140.6,305.9 L 140.8,304.5 L 141.9,303.6 L 143.4,304.0 L 148.6,303.2 L 150.4,303.6 L 151.2,302.9 L 153.5,303.0 L 154.4,302.1 L 156.2,302.5 L 157.3,298.2 L 158.7,297.4 L 157.1,291.5 L 156.8,283.2 L 154.8,281.8 L 154.5,281.0 L 155.5,279.4 L 159.1,280.9 L 161.1,283.1 L 161.8,283.1 L 161.3,283.8 L 161.9,283.1 L 167.8,287.3 L 170.8,288.5 L 172.6,288.0 L 174.3,288.6 L 177.4,288.7 L 181.5,288.1 L 188.3,288.8 L 196.3,286.7 L 199.3,284.3 L 199.0,283.8 L 201.8,285.2 L 204.8,291.1 L 205.2,293.9 L 207.3,295.9 L 208.6,298.0 L 208.6,298.9 L 207.7,299.0 L 207.9,299.8 L 219.2,306.7 L 216.9,313.7 L 212.3,320.2 L 212.3,323.9 L 213.3,325.7 L 215.2,327.0 L 222.2,328.0 L 223.5,330.1 L 224.4,336.2 L 225.8,338.6 Z" fill="#dcf1e5" stroke="#2a9a5c" stroke-width="2.4"/><text x="169.9" y="334.8" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="11.5" font-weight="800" fill="#054d23">🏘️ 장유</text></g>
@@ -504,20 +531,20 @@ function zoomOut(){
 // ── 노드 클릭 ────────────────────────────────────
 function hN(id){
   if(!ZOOMED)zoomIn();
-  if(ph==='start'){
-    ss=id; ph='end'; selV(id,true);
-    document.getElementById('cbn').classList.add('show'); upS();
-  } else {
+  if(ph==='end'){
     if(id===ss){rS();return;}
     pF=ss; pT=id;
     addRoute(pF,pT);
     selV(ss,false);
     document.getElementById('cbn').classList.remove('show');
-    ss=null; ph='start'; upS();
+    ss=null; ph='write'; upS();
+  } else {
+    ss=id; ph='end'; selV(id,true);
+    document.getElementById('cbn').classList.add('show'); upS();
   }
 }
 function rS(){
-  if(ss)selV(ss,false); ss=null; ph='start';
+  if(ss)selV(ss,false); ss=null; ph=(ar.length>0)?'write':'start';
   document.getElementById('cbn').classList.remove('show'); rmTmp(); upS();
 }
 function selV(id,on){
@@ -528,13 +555,21 @@ function selV(id,on){
 }
 function upS(){
   var b=document.getElementById('sb');
-  b.className='step-bar'+(ph==='end'?' s2':'');
+  b.className='step-bar';
   var m={
     start:['① 출발지를 누르세요','지역 또는 창원·부산을 선택하세요'],
-    end:['② 도착지를 누르세요','흐름가 끝날 지역을 선택하세요'],
+    end:['② 도착지를 누르세요','흐름이 끝날 지역을 선택하세요'],
+    write:['③ 근거를 작성하세요','아래 카드에 근거를 입력하세요. 새 출발지를 누르면 다음 흐름을 시작합니다'],
   };
   document.getElementById('sl').textContent=m[ph][0];
   document.getElementById('sd').textContent=m[ph][1];
+  var s1=document.getElementById('step1'), s2=document.getElementById('step2'), s3=document.getElementById('step3');
+  var states={start:['now','',''], end:['done','now',''], write:['done','done','now']};
+  var st=states[ph];
+  [s1,s2,s3].forEach(function(el,i){
+    el.className='step'+(st[i]?(' '+st[i]):'');
+    el.querySelector('.dot').textContent = st[i]==='done' ? '✓' : String(i+1);
+  });
 }
 
 // ── 흐름 ──────────────────────────────────────
@@ -602,8 +637,11 @@ function addRoute(f,t){
 function addCard(a){
   var fn=NODES[a.f],tn=NODES[a.t];
   var wrap=document.createElement('div');
-  wrap.className='ac'; wrap.id='card-'+a.id;
+  wrap.className='ac ac-writing'; wrap.id='card-'+a.id;
   var head=document.createElement('div'); head.className='ah';
+  var badge=document.createElement('span'); badge.className='ac-num'; badge.textContent='흐름 '+ar.length;
+  var status=document.createElement('span'); status.className='ac-status'; status.textContent='근거 작성중';
+  head.appendChild(badge); head.appendChild(status);
   head.appendChild(document.createTextNode(fn.label+' → '+tn.label));
   var btn=document.createElement('button'); btn.className='adel'; btn.textContent='✕ 삭제';
   (function(aid){btn.addEventListener('click',function(){dA(aid);});})(a.id);
@@ -612,12 +650,13 @@ function addCard(a){
 
   var r1=document.createElement('div'); r1.className='rq';
   var l1=document.createElement('label');
-  l1.innerHTML='① 어떤 데이터가 이 흐름을 뒷받침하나요? <span class="opt">(필수 · 데이터 탭 참고)</span>';
+  l1.innerHTML='① 무엇을 근거로 이 흐름을 그렸나요? <span class="opt">(필수 · 읽기자료·데이터 탭 참고)</span>';
   var i1=document.createElement('input'); i1.type='text';
   i1.placeholder='예: 2001년 내외동 정점 → 2002년 장유 인구 폭발';
   i1.value=a.q1;
   i1.addEventListener('input',function(){
     var r=ar.find(function(x){return x.id===a.id;}); if(r)r.q1=i1.value;
+    wrap.classList.toggle('ac-writing', !i1.value.trim());
   });
   r1.appendChild(l1); r1.appendChild(i1);
 
@@ -642,6 +681,10 @@ function dA(id){
   });
   var c=document.getElementById('card-'+id); if(c)c.remove();
   ar=ar.filter(function(a){return a.id!==id;});
+  ar.forEach(function(a,idx){
+    var badge=document.querySelector('#card-'+a.id+' .ac-num');
+    if(badge) badge.textContent='흐름 '+(idx+1);
+  });
   if(!ar.length){
     document.getElementById('lw').style.display='none';
     document.getElementById('sw').style.display='none';
@@ -650,7 +693,7 @@ function dA(id){
 
 // ── Firebase 제출 ────────────────────────────────
 function fin(){
-  if(!ar.length){alert('흐름를 최소 1개 이상 완성해 주세요.'); return;}
+  if(ar.length<2){alert('흐름을 최소 2개 이상 완성해 주세요. (현재 '+ar.length+'개)'); return;}
   var missing=ar.find(function(a){return !a.q1 || !a.q1.trim();});
   if(missing){
     var mf=NODES[missing.f],mt=NODES[missing.t];
