@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>교사 대시보드 — 지역 문제 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* ── 김해_수업통합.html과 톤을 맞춘 디자인 시스템 ── */
+:root{
+  --c-surface:#eef1f4;
+  --c-surface-bright:#ffffff;
+  --c-surface-low:#f5f7fa;
+  --c-surface-mid:#eef1f4;
+  --c-surface-high:#dde2ea;
+  --c-on-surface:#1b2a4a;
+  --c-on-surface-variant:#5a6680;
+  --c-outline:#dde2ea;
+  --c-outline-strong:#9aa0ae;
+  --c-primary:#1b2a4a;
+  --c-primary-accent:#3a6ea5;
+  --c-primary-soft:#e7eef6;
+  --c-secondary:#2a9a5c;
+  --c-secondary-soft:#e3f3e9;
+  --c-secondary-mint:#e3f3e9;
+  --c-error:#c0392b;
+  --c-error-soft:#fbe9e7;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;
+  --font-serif:'Noto Serif KR',serif;
+  --r-sm:6px;--r-md:10px;--r-lg:12px;--r-xl:14px;--r-pill:9999px;
+  --sh1:0 2px 8px rgba(27,42,74,.06),0 6px 18px rgba(27,42,74,.05);
+  --sh2:0 4px 14px rgba(27,42,74,.09),0 14px 32px rgba(27,42,74,.08);
+  --shadow-glow:0 0 0 4px rgba(58,110,165,.18);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:var(--font);font-size:15px;line-height:1.6;
+  color:var(--c-on-surface);background:var(--c-surface);min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;}
+input,textarea,select{font-family:inherit;font-size:inherit;}
+
+/* ── 헤더 ── */
+.hd{
+  background:rgba(238,241,244,.88);
+  backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--c-outline);
+  padding:12px 28px 10px;
+  position:sticky;top:0;z-index:20;
+  display:flex;flex-direction:column;gap:8px;
+}
+.hd-title{
+  font-family:var(--font-serif);
+  font-size:20px;font-weight:700;letter-spacing:-0.01em;
+  color:var(--c-on-surface);line-height:1.2;
+}
+.hd-row{
+  display:flex;align-items:center;gap:10px;
+}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--c-primary-soft);color:var(--c-primary-accent);
+  font-size:13px;font-weight:700;
+  padding:6px 16px;border-radius:var(--r-pill);
+  white-space:nowrap;
+}
+.badge.warn{background:#fdf0e6;color:#a05a00;}
+.pulse{
+  display:inline-block;width:8px;height:8px;
+  background:var(--c-primary-accent);border-radius:50%;
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.ctrl{display:flex;gap:8px;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:8px 18px;border-radius:var(--r-pill);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);
+  transition:transform 120ms ease,box-shadow 200ms ease;
+  white-space:nowrap;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--sh1);}
+.btn-clr{background:var(--c-error-soft);color:var(--c-error);border:1px solid rgba(192,57,43,.2);}
+.btn-ref{
+  background:var(--c-surface-bright);color:var(--c-on-surface);
+  border:1px solid var(--c-outline);
+}
+.btn-ref:hover{background:var(--c-surface-low);}
+
+/* ── 본문 ── */
+.wrap{max-width:1240px;margin:0 auto;padding:24px 24px 60px;}
+
+/* ── 현황 배너: 박스 형태 유지(가독성) ── */
+.stat-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.stat{
+  background:var(--c-surface-bright);border-radius:var(--r-xl);
+  padding:18px 22px;flex:1;min-width:140px;
+  border:1px solid var(--c-outline);
+  box-shadow:var(--sh1);
+  position:relative;overflow:hidden;
+}
+.stat::before{
+  content:'';position:absolute;right:-16px;top:-16px;
+  width:60px;height:60px;background:var(--c-primary-accent);
+  border-radius:50%;opacity:.08;
+}
+.stat-n{font-family:var(--font-serif);font-size:34px;font-weight:900;color:var(--c-primary);line-height:1;letter-spacing:-0.02em;}
+#sPlanProb{font-size:16px;line-height:1.35;letter-spacing:0;word-break:keep-all;}
+.stat-l{font-size:12px;color:var(--c-on-surface-variant);margin-top:6px;font-weight:500;}
+
+/* ── 섹션 카드 ── */
+.freq-card{
+  background:var(--c-surface-bright);border-radius:var(--r-xl);
+  padding:22px;margin-bottom:20px;
+  border:1px solid var(--c-outline);
+  box-shadow:var(--sh1);
+}
+.sec-title{
+  font-size:13px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--c-on-surface-variant);margin-bottom:16px;
+}
+
+/* ── 루트 빈도 막대 ── */
+.route-bar{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.route-label{font-size:13px;font-weight:600;color:var(--c-on-surface);width:220px;flex-shrink:0;}
+.bar-wrap{
+  flex:1;background:var(--c-surface-low);border-radius:var(--r-pill);
+  height:28px;overflow:hidden;border:1px solid var(--c-outline);
+}
+.bar-fill{
+  height:100%;border-radius:var(--r-pill);
+  display:flex;align-items:center;padding-left:12px;
+  font-size:12px;font-weight:700;color:#fff;
+  background:var(--c-primary-accent);
+  transition:width .7s cubic-bezier(.2,.8,.3,1);
+}
+.route-cnt{font-size:13px;font-weight:700;color:var(--c-on-surface-variant);width:44px;text-align:right;}
+
+/* ── 모둠 카드 ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+.gcard{
+  background:var(--c-surface-bright);border-radius:var(--r-xl);padding:18px;
+  border:1px solid var(--c-outline);box-shadow:var(--sh1);
+  transition:transform 160ms ease,box-shadow 200ms ease;
+}
+.gcard:hover{transform:translateY(-2px);box-shadow:var(--sh2);}
+.gcard-name{
+  font-family:var(--font-serif);
+  font-size:16px;font-weight:700;color:var(--c-on-surface);
+  margin-bottom:3px;letter-spacing:-0.01em;
+}
+.gcard-meta{font-size:12px;color:var(--c-on-surface-variant);margin-bottom:14px;font-weight:500;}
+.arrow-item{
+  background:var(--c-surface-low);border-radius:var(--r-md);
+  padding:11px 13px;margin-bottom:8px;
+  border:1px solid var(--c-outline);
+}
+.arrow-route{
+  font-size:14px;font-weight:700;color:var(--c-primary-accent);
+  margin-bottom:4px;letter-spacing:-0.01em;
+}
+.arrow-q1{font-size:12.5px;color:var(--c-on-surface);line-height:1.6;}
+.arrow-q1 b{
+  color:var(--c-on-surface-variant);display:block;
+  font-size:10.5px;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;
+}
+.gcard-toggle{display:flex;gap:4px;background:var(--c-surface-low);border-radius:var(--r-pill);
+  padding:3px;margin-bottom:12px;border:1px solid var(--c-outline);}
+.gcard-toggle button{flex:1;padding:6px 10px;border:none;border-radius:var(--r-pill);
+  background:transparent;color:var(--c-on-surface-variant);font-size:11.5px;font-weight:700;
+  cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.gcard-toggle button.on{background:var(--c-surface-bright);color:var(--c-on-surface);box-shadow:var(--sh1);}
+.gcard-toggle button.empty-src{color:var(--c-outline-strong);}
+.gview-empty{font-size:12px;color:var(--c-outline-strong);padding:10px 2px;text-align:center;}
+
+/* ── 협의안 ── */
+.plan-tabs{
+  display:flex;gap:4px;padding:4px;
+  background:var(--c-surface-mid);border-radius:var(--r-pill);
+  border:1px solid var(--c-outline);
+}
+.plan-tab{
+  padding:8px 18px;border:none;border-radius:var(--r-pill);
+  font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);
+  background:transparent;color:var(--c-on-surface-variant);transition:all .16s;
+}
+.plan-tab.on{background:var(--c-surface-bright);color:var(--c-on-surface);box-shadow:var(--sh1);}
+.prob-badge{
+  display:inline-flex;align-items:center;
+  padding:7px 16px;border-radius:var(--r-pill);
+  font-size:15px;font-weight:800;margin-bottom:12px;
+}
+.prob-공동화{background:#fbe9e7;color:#c0392b;}
+.prob-기반시설{background:#e6f3ec;color:#2a9a5c;}
+.prob-상권{background:#fdf0e6;color:#a05a00;}
+.prob-생활권{background:#e7eef6;color:#3a6ea5;}
+.plan-card{
+  background:var(--c-surface-bright);border-radius:var(--r-xl);padding:18px;
+  border:1px solid var(--c-outline);box-shadow:var(--sh1);
+  transition:transform 160ms ease,box-shadow 200ms ease;
+}
+.plan-card:hover{transform:translateY(-2px);box-shadow:var(--sh2);}
+.plan-item{
+  background:var(--c-surface-low);border-radius:var(--r-md);
+  padding:10px 13px;margin-bottom:7px;
+  border:1px solid var(--c-outline);font-size:12.5px;line-height:1.65;
+}
+.plan-item b{
+  color:var(--c-on-surface-variant);display:block;
+  font-size:10.5px;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;
+}
+.plan-item span{color:var(--c-on-surface);}
+.agents-row{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0;}
+.agent-tag{
+  background:var(--c-secondary-mint);color:#1a6b45;
+  padding:3px 10px;border-radius:var(--r-pill);font-size:11.5px;font-weight:600;
+}
+.chatq{
+  background:var(--c-primary-soft);
+  border-left:3px solid var(--c-primary-accent);
+  padding:9px 12px;border-radius:0 var(--r-md) var(--r-md) 0;
+  font-size:12.5px;color:var(--c-primary-accent);
+  margin-top:8px;font-style:italic;line-height:1.5;
+}
+.plan-freq-bar{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.plan-freq-label{font-size:13px;font-weight:600;color:var(--c-on-surface);width:220px;flex-shrink:0;}
+.plan-freq-wrap{
+  flex:1;background:var(--c-surface-low);border-radius:var(--r-pill);
+  height:28px;overflow:hidden;border:1px solid var(--c-outline);
+}
+.plan-freq-fill{
+  height:100%;border-radius:var(--r-pill);
+  display:flex;align-items:center;padding-left:12px;
+  font-size:12px;font-weight:700;color:#fff;
+  transition:width .7s cubic-bezier(.2,.8,.3,1);
+}
+.fill-공동화{background:#c0392b;}
+.fill-기반시설{background:#2a9a5c;}
+.fill-상권{background:#d4820a;}
+.fill-생활권{background:#3a6ea5;}
+
+/* ── 빈 상태 ── */
+.empty{
+  text-align:center;padding:64px 24px;
+  color:var(--c-on-surface-variant);
+  background:var(--c-surface-bright);border-radius:var(--r-xl);
+  border:1px dashed var(--c-outline);
+}
+.empty-icon{font-size:44px;margin-bottom:14px;}
+.empty-t{font-family:var(--font-serif);font-size:17px;font-weight:700;margin-bottom:6px;color:var(--c-on-surface);}
+.empty-s{font-size:14px;}
+.err-banner{
+  background:var(--c-error-soft);border:1px solid rgba(192,57,43,.3);
+  border-radius:var(--r-md);padding:12px 16px;margin-bottom:16px;
+  font-size:13px;color:var(--c-error);display:none;
+}
+
+/* ── 설정 오버레이 ── */
+.setup{
+  position:fixed;inset:0;background:rgba(27,42,74,.55);
+  display:flex;align-items:center;justify-content:center;z-index:100;
+  backdrop-filter:blur(6px);
+}
+.setup-box{
+  background:var(--c-surface-bright);border-radius:var(--r-xl);
+  padding:32px;width:90%;max-width:500px;
+  border:1px solid var(--c-outline);box-shadow:var(--sh2);
+}
+.setup-box h2{font-family:var(--font-serif);font-size:21px;font-weight:700;margin-bottom:8px;color:var(--c-on-surface);letter-spacing:-0.01em;}
+.setup-box p{font-size:13.5px;color:var(--c-on-surface-variant);margin-bottom:20px;line-height:1.65;}
+.setup-box input{
+  width:100%;padding:14px 16px;
+  border:1px solid var(--c-outline);border-radius:var(--r-md);
+  background:var(--c-surface-bright);color:var(--c-on-surface);
+  font-size:14px;font-family:var(--font);margin-bottom:14px;
+  outline:none;transition:border-color .12s,box-shadow .12s;
+}
+.setup-box input:focus{border-color:var(--c-primary-accent);box-shadow:var(--shadow-glow);}
+.setup-ok{
+  width:100%;padding:14px;
+  background:var(--c-primary);color:#fff;border:none;
+  border-radius:var(--r-pill);font-size:15px;font-weight:700;
+  cursor:pointer;font-family:var(--font);
+  transition:transform .12s ease,box-shadow .2s;
+  box-shadow:var(--sh1);
+}
+.setup-ok:hover{transform:translateY(-1px);box-shadow:var(--sh2);}
+.setup-skip{
+  width:100%;padding:10px;background:none;
+  color:var(--c-on-surface-variant);border:none;
+  cursor:pointer;font-size:13px;margin-top:8px;font-family:var(--font);
+}
+
+</style>
+</head>
+<body>
+
+<!-- 설정 오버레이 -->
+<div class="setup" id="setupPanel">
+  <div class="setup-box">
+    <h2>🔧 Firebase 연결 설정</h2>
+    <p>Firebase Realtime Database URL을 입력하세요.<br>
+    형식: <code>https://프로젝트ID-default-rtdb.firebaseio.com</code></p>
+    <input id="fbInput" type="text" placeholder="https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com"/>
+    <button class="setup-ok" onclick="saveConfig()">연결 시작</button>
+    <button class="setup-skip" onclick="useDemo()">데모 모드로 보기</button>
+  </div>
+</div>
+
+<!-- 헤더 -->
+<div class="hd">
+  <div class="hd-title">🗺️ 지역 문제 대시보드 — 모둠 제출 현황</div>
+  <div class="hd-row">
+    <div class="badge" id="countBadge"><span class="pulse"></span>0모둠 제출</div>
+    <div class="ctrl">
+      <button class="btn btn-ref" onclick="loadData()">↻ 새로고침</button>
+      <button class="btn btn-clr" onclick="clearAll()">🗑 초기화</button>
+      <button class="btn btn-ref" onclick="showSetup()">⚙️</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="err-banner" id="errBanner">⚠️ 데이터 로드 실패. Firebase URL과 와이파이를 확인하세요.</div>
+
+  <!-- 현황 -->
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-n" id="sTotal">0</div>
+      <div class="stat-l">제출 모둠</div>
+    </div>
+    <div class="stat" style="border-left-color:#d4820a;">
+      <div class="stat-n" id="sArrows">0</div>
+      <div class="stat-l">총 흐름 시각화 수</div>
+    </div>
+  </div>
+  <div class="stat-row" style="margin-top:0;margin-bottom:20px;">
+    <div class="stat" style="border-left-color:#2a9a5c;">
+      <div class="stat-n" id="sPlan">0</div>
+      <div class="stat-l">협의안 제출 모둠</div>
+    </div>
+    <div class="stat" style="border-left-color:#c0392b;">
+      <div class="stat-n" id="sPlanProb">—</div>
+      <div class="stat-l">최다 선택 문제</div>
+    </div>
+  </div>
+
+  <!-- 루트 빈도 -->
+  <div class="freq-card">
+    <div class="sec-title">📊 모둠 간 공통 루트 분석</div>
+    <div id="freqList"><p style="color:#4a6080;font-size:13px;">아직 제출된 데이터가 없습니다.</p></div>
+  </div>
+
+  <!-- 모둠 카드 -->
+  <!-- 협의안 문제 분포 -->
+  <div class="freq-card" style="margin-bottom:20px;" id="planSection">
+    <div class="sec-title">📝 협의안 문제 분포</div>
+    <div id="planFreqList"><p style="color:#4a6080;font-size:13px;">아직 제출된 협의안이 없습니다.</p></div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <div class="sec-title" style="margin:0;">📋 모둠별 제출 내용</div>
+    <div id="lastSync" style="font-size:11.5px;color:var(--c-on-surface-variant);"></div>
+  </div>
+  <div class="grid" id="groupGrid">
+    <div class="empty">
+      <div class="empty-icon">⏳</div>
+      <div class="empty-t">학생 제출을 기다리는 중</div>
+      <div class="empty-s">모둠이 활동을 완료하면 여기에 표시됩니다</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var FB_URL = localStorage.getItem('fb_url') || '';
+var DEMO_DATA = null;
+var pollTimer = null;
+var LAST_ARROW_DATA = null;
+var LAST_PLAN_DATA = null;
+var GROUP_VIEW_STATE = {};
+
+// ── 설정 ──────────────────────────────────────
+function saveConfig(){
+  var url = document.getElementById('fbInput').value.trim().replace(/\/+$/, '');
+  if(!url){ alert('URL을 입력해 주세요.'); return; }
+  FB_URL = url;
+  localStorage.setItem('fb_url', url);
+  document.getElementById('setupPanel').style.display = 'none';
+  startPolling();
+}
+function showSetup(){
+  document.getElementById('fbInput').value = FB_URL;
+  document.getElementById('setupPanel').style.display = 'flex';
+}
+function useDemo(){
+  DEMO_DATA = makeDemoData();
+  FB_URL = '';
+  document.getElementById('setupPanel').style.display = 'none';
+  render(DEMO_DATA); renderPlans(makeDemoPlans());
+}
+function makeDemoData(){
+  return {
+    'demo1':{groupName:'1모둠',timestamp:Date.now()-60000,count:3,arrows:[
+      {from:'naewoi',to:'jangyu',fromLabel:'내외동',toLabel:'장유',q1:'2001년 내외동 정점 이후 2002년 장유 인구가 폭발적으로 증가',q2:'내외동 빈 상가 증가'},
+      {from:'dongmi',to:'jangyu',fromLabel:'동상동·회현동',toLabel:'장유',q1:'동상동 인구 1993~2025 지속 감소 추세',q2:'구도심 공동화 심화'},
+      {from:'ext',to:'jangyu',fromLabel:'부산·창원',toLabel:'장유',q1:'2002년 부산·창원→김해 순이동 역대 최대(각 14,646명, 13,542명)',q2:''},
+    ]},
+    'demo2':{groupName:'2모둠',timestamp:Date.now()-30000,count:2,arrows:[
+      {from:'naewoi',to:'jangyu',fromLabel:'내외동',toLabel:'장유',q1:'내외동 2001년 9만명 정점 후 계속 감소, 장유 2025년 17만명',q2:'내외동 학원가 쇠퇴'},
+      {from:'ext',to:'juchon',fromLabel:'부산·창원',toLabel:'주촌면',q1:'등록외국인 2023~24 역대 최고, 주촌 산업단지 가동과 일치',q2:'주촌 외국인 밀집지역화'},
+    ]},
+    'demo3':{groupName:'3모둠',timestamp:Date.now()-10000,count:4,arrows:[
+      {from:'ext',to:'jangyu',fromLabel:'부산·창원',toLabel:'장유',q1:'2002년 창원↔김해 순이동 +13,542명 역대 최고',q2:'장유 배후도시화'},
+      {from:'naewoi',to:'jangyu',fromLabel:'내외동',toLabel:'장유',q1:'두 곡선이 반대 방향 — 내외동 하락 = 장유 상승',q2:''},
+      {from:'juchon',to:'dongmi',fromLabel:'주촌면',toLabel:'동상동·회현동',q1:'외국인 70%가 주촌 거주, 주말엔 동상동 집결',q2:'동상동 외국인 상권 형성'},
+      {from:'ext',to:'juchon',fromLabel:'부산·창원',toLabel:'주촌면',q1:'주촌 산업단지 조성 → 외국인 노동자 유입',q2:'주촌 인구 2017→2024 5배 증가'},
+    ]},
+  };
+}
+
+// ── 폴링 ──────────────────────────────────────
+function startPolling(){
+  loadData(); loadPlans();
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(function(){loadData();loadPlans();}, 4000);
+}
+function loadData(){
+  if(!FB_URL){ if(DEMO_DATA) render(DEMO_DATA); return; }
+  fetch(FB_URL + '/submissions.json')
+  .then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  })
+  .then(function(data){
+    document.getElementById('errBanner').style.display='none';
+    render(data);
+  })
+  .catch(function(e){
+    document.getElementById('errBanner').style.display='block';
+  });
+}
+function clearAll(){
+  if(!FB_URL){ DEMO_DATA=null; render(null); return; }
+  if(!confirm('모든 제출 데이터를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) return;
+  fetch(FB_URL+'/submissions.json',{method:'DELETE'})
+  .then(function(){ render(null); })
+  .catch(function(){ alert('삭제 실패. 네트워크를 확인하세요.'); });
+}
+
+// ── 렌더링 ────────────────────────────────────
+
+// ── 협의안 ─────────────────────────────────────────────────
+var planPollTimer = null;
+function loadPlans(){
+  if(!FB_URL){ if(DEMO_DATA) renderPlans(makeDemoPlans()); return; }
+  fetch(FB_URL+'/proposals.json')
+  .then(function(r){return r.json();})
+  .then(function(d){renderPlans(d);})
+  .catch(function(){});
+}
+function makeDemoPlans(){
+  return {
+    'dp1':{groupName:'1모둠',timestamp:Date.now()-50000,problem:'구도심 공동화',
+      arrowRef:'내외동→장유 (2002년~)',cause:'신도시 개발로 인구 이동, 구도심 상권 공동화',
+      agents:['🏛️ 김해시','👥 주민·공동체'],
+      plan:'빈 상가를 청년 창업 공간으로 지원, 커뮤니티 마켓 정기 개최',
+      limit:'예산 확보 어려움',chatQ:'구도심 활성화 성공 사례는?'},
+    'dp2':{groupName:'2모둠',timestamp:Date.now()-30000,problem:'신도시 기반시설 부족',
+      arrowRef:'부산·창원→장유 (2002년 급증)',cause:'인구 급증 대비 학교·교통 인프라 부족',
+      agents:['🏛️ 김해시','🏗️ 중앙정부'],
+      plan:'장유 경전철 조기 개통, 학교 신설 우선 배정',
+      limit:'예산·부지 확보 장기화',chatQ:'장유 주민들이 가장 원하는 인프라는?'},
+    'dp3':{groupName:'3모둠',timestamp:Date.now()-10000,problem:'생활권 분절과 행정·인프라 비효율',
+      arrowRef:'장유↔부산 순이동 (2015~ 0 수렴)',cause:'인구의 3분의 1이 장유에 집중됐지만 행정·의료·문화 기능은 구도심에 집중',
+      agents:['🏛️ 김해시','🏢 기업·상인'],
+      plan:'장유 행정복지센터 기능 확대, 구도심↔장유 광역버스 노선 신설',
+      limit:'단기 효과 기대 어려움',chatQ:'행정 분관을 장유에 설치한 사례가 있는 도시는?'},
+  };
+}
+function renderPlans(data){
+  LAST_PLAN_DATA = data;
+  if(!data){
+    document.getElementById('sPlan').textContent='0';
+    document.getElementById('sPlanProb').textContent='—';
+    document.getElementById('planFreqList').innerHTML='<p style="color:#4a6080;font-size:13px;">아직 제출된 협의안이 없습니다.</p>';
+    renderGroupCards();
+    return;
+  }
+  var plans=Object.values(data).filter(function(p){return p&&p.groupName;});
+  plans.sort(function(a,b){return(a.timestamp||0)-(b.timestamp||0);});
+  document.getElementById('sPlan').textContent=plans.length;
+
+  // 문제 빈도
+  var probCnt={};
+  plans.forEach(function(p){probCnt[p.problem]=(probCnt[p.problem]||0)+1;});
+  var maxP=Math.max.apply(null,Object.values(probCnt).concat([1]));
+  var topProb=Object.entries(probCnt).sort(function(a,b){return b[1]-a[1];})[0];
+  document.getElementById('sPlanProb').textContent=topProb?topProb[0]:'—';
+
+  var PROB_KEYS={'구도심 공동화':'공동화','신도시 기반시설 부족':'기반시설','구도심 상권 전환과 갈등':'상권','생활권 분절과 행정·인프라 비효율':'생활권'};
+  var freqHtml='';
+  Object.entries(probCnt).sort(function(a,b){return b[1]-a[1];}).forEach(function(kv){
+    var key=PROB_KEYS[kv[0]]||'기타';
+    var pct=Math.round(kv[1]/maxP*100);
+    freqHtml+='<div class="plan-freq-bar">'
+      +'<div class="plan-freq-label">'+escHtml(kv[0])+'</div>'
+      +'<div class="plan-freq-wrap"><div class="plan-freq-fill fill-'+key+'" style="width:'+pct+'%">'+kv[1]+'모둠</div></div>'
+      +'</div>';
+  });
+  document.getElementById('planFreqList').innerHTML=freqHtml||'<p style="color:#4a6080;font-size:13px;">없음</p>';
+
+  renderGroupCards();
+}
+
+function render(data){
+  LAST_ARROW_DATA = data;
+  if(!data){
+    document.getElementById('sTotal').textContent='0';
+    document.getElementById('sArrows').textContent='0';
+    document.getElementById('sRoutes').textContent='0';
+    document.getElementById('sAvg').textContent='—';
+    document.getElementById('countBadge').innerHTML='<span class="pulse"></span>0모둠 제출';
+    document.getElementById('freqList').innerHTML='<p style="color:#4a6080;font-size:13px;">아직 제출된 데이터가 없습니다.</p>';
+    renderGroupCards();
+    markSynced();
+    return;
+  }
+  var groups = Object.values(data).filter(function(g){return g&&g.groupName;});
+  groups.sort(function(a,b){return (a.timestamp||0)-(b.timestamp||0);});
+
+  var totalArrows=0, routes={};
+  groups.forEach(function(g){
+    (g.arrows||[]).forEach(function(a){
+      totalArrows++;
+      var key=(a.fromLabel||'?')+' → '+(a.toLabel||'?');
+      routes[key]=(routes[key]||0)+1;
+    });
+  });
+
+  var routeKeys=Object.keys(routes);
+  var maxCnt=Math.max.apply(null,routeKeys.map(function(k){return routes[k];})||[1]);
+
+  // 통계
+  document.getElementById('sTotal').textContent=groups.length;
+  document.getElementById('sArrows').textContent=totalArrows;
+  
+  
+  document.getElementById('countBadge').innerHTML='<span class="pulse"></span>'+groups.length+'모둠 제출';
+
+  // 루트 빈도
+  var sortedRoutes=routeKeys.slice().sort(function(a,b){return routes[b]-routes[a];});
+  var freqHtml='';
+  sortedRoutes.forEach(function(k){
+    var cnt=routes[k];
+    var pct=Math.round(cnt/maxCnt*100);
+    freqHtml+='<div class="route-bar">'
+      +'<div class="route-label">'+escHtml(k)+'</div>'
+      +'<div class="bar-wrap"><div class="bar-fill" style="width:'+pct+'%">'+cnt+'개 모둠</div></div>'
+      +'<div class="route-cnt">'+cnt+'/'+groups.length+'</div>'
+      +'</div>';
+  });
+  document.getElementById('freqList').innerHTML=freqHtml||'<p style="color:#4a6080;font-size:13px;">아직 없습니다.</p>';
+
+  renderGroupCards();
+  markSynced();
+}
+
+// ── 모둠별 제출 내용: 흐름도·협의안 병합 카드 ──────────────
+var PROB_KEYS={'구도심 공동화':'공동화','신도시 기반시설 부족':'기반시설','구도심 상권 전환과 갈등':'상권','생활권 분절과 행정·인프라 비효율':'생활권'};
+function renderGroupCards(){
+  var arrowMap={};
+  if(LAST_ARROW_DATA){
+    Object.values(LAST_ARROW_DATA).forEach(function(g){ if(g&&g.groupName) arrowMap[g.groupName]=g; });
+  }
+  var planMap={};
+  if(LAST_PLAN_DATA){
+    Object.values(LAST_PLAN_DATA).forEach(function(p){ if(p&&p.groupName) planMap[p.groupName]=p; });
+  }
+  var names=Object.keys(arrowMap).concat(Object.keys(planMap)).filter(function(v,i,arr){return arr.indexOf(v)===i;});
+  if(!names.length){
+    document.getElementById('groupGrid').innerHTML=
+      '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-t">학생 제출을 기다리는 중</div><div class="empty-s">모둠이 활동을 완료하면 여기에 표시됩니다</div></div>';
+    return;
+  }
+  names.sort(function(a,b){
+    var ta=(arrowMap[a]&&arrowMap[a].timestamp)||(planMap[a]&&planMap[a].timestamp)||0;
+    var tb=(arrowMap[b]&&arrowMap[b].timestamp)||(planMap[b]&&planMap[b].timestamp)||0;
+    return ta-tb;
+  });
+
+  var gridHtml='';
+  names.forEach(function(name){
+    var g=arrowMap[name], p=planMap[name];
+    var hasArrow=!!g, hasPlan=!!p;
+    var time=(g&&g.timestamp)?new Date(g.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+             :(p&&p.timestamp)?new Date(p.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
+    var metaBits=[];
+    if(hasArrow) metaBits.push('화살표 '+(g.arrows||[]).length+'개');
+    if(hasPlan) metaBits.push('협의안 제출');
+    var defaultView = GROUP_VIEW_STATE[name] || (hasArrow ? 'arrow' : 'plan');
+
+    // 흐름도 패널
+    var arrowHtml='';
+    if(hasArrow){
+      (g.arrows||[]).forEach(function(a){
+        arrowHtml+='<div class="arrow-item">'
+          +'<div class="arrow-route">'+escHtml((a.fromLabel||'?')+' → '+(a.toLabel||'?'))+'</div>'
+          +(a.q1?'<div class="arrow-q1"><b>근거:</b> '+escHtml(a.q1)+'</div>':'')
+          +(a.q2?'<div class="arrow-q2">↳ '+escHtml(a.q2)+'</div>':'')
+          +'</div>';
+      });
+    } else {
+      arrowHtml='<div class="gview-empty">아직 흐름도를 제출하지 않았습니다</div>';
+    }
+
+    // 협의안 패널
+    var planHtml='';
+    if(hasPlan){
+      var key=PROB_KEYS[p.problem]||'기타';
+      var agents=(p.agents||[]).map(function(a){return '<span class="agent-tag">'+escHtml(a)+'</span>';}).join('');
+      planHtml='<span class="prob-badge prob-'+key+'">'+escHtml(p.problem||'?')+'</span>'
+        +(p.arrowRef?'<div class="plan-item"><b>관련 화살표</b><span>'+escHtml(p.arrowRef)+'</span></div>':'')
+        +(p.cause?'<div class="plan-item"><b>핵심 원인</b><span>'+escHtml(p.cause)+'</span></div>':'')
+        +(agents?'<div class="plan-item"><b>해결 주체</b><div class="agents-row">'+agents+'</div></div>':'')
+        +(p.plan?'<div class="plan-item"><b>구체적 방안</b><span>'+escHtml(p.plan)+'</span></div>':'')
+        +(p.limit?'<div class="plan-item"><b>예상 어려움</b><span>'+escHtml(p.limit)+'</span></div>':'')
+        +(p.chatQ?'<div class="chatq">🤖 &ldquo;'+escHtml(p.chatQ)+'&rdquo;</div>':'');
+    } else {
+      planHtml='<div class="gview-empty">아직 협의안을 제출하지 않았습니다</div>';
+    }
+
+    gridHtml+='<div class="gcard" data-gname="'+escHtml(name)+'">'
+      +'<div class="gcard-name">'+escHtml(name)+'</div>'
+      +'<div class="gcard-meta">'+(metaBits.join(' · ')||'제출 대기')+(time?' · '+time:'')+'</div>'
+      +'<div class="gcard-toggle">'
+        +'<button class="'+(defaultView==='arrow'?'on':'')+'" onclick="showGroupView(this,\'arrow\')">🗺️ 흐름도</button>'
+        +'<button class="'+(defaultView==='plan'?'on':'')+'" onclick="showGroupView(this,\'plan\')">📝 협의안</button>'
+      +'</div>'
+      +'<div class="gview gview-arrow" style="display:'+(defaultView==='arrow'?'block':'none')+';">'+arrowHtml+'</div>'
+      +'<div class="gview gview-plan" style="display:'+(defaultView==='plan'?'block':'none')+';">'+planHtml+'</div>'
+      +'</div>';
+  });
+  document.getElementById('groupGrid').innerHTML=gridHtml;
+}
+function showGroupView(btn,view){
+  var card=btn.closest('.gcard');
+  var name=card.getAttribute('data-gname');
+  if(name) GROUP_VIEW_STATE[name]=view;
+  card.querySelectorAll('.gcard-toggle button').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  card.querySelector('.gview-arrow').style.display = view==='arrow'?'block':'none';
+  card.querySelector('.gview-plan').style.display = view==='plan'?'block':'none';
+}
+function markSynced(){
+  var el=document.getElementById('lastSync');
+  if(!el) return;
+  var now=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.textContent='마지막 갱신 '+now+' · 4초마다 자동 갱신 중';
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 초기화 ────────────────────────────────────
+if(FB_URL){
+  document.getElementById('setupPanel').style.display='none';
+  startPolling();
+} else {
+  document.getElementById('fbInput').value='';
+}
+</script>
+</body>
+</html>

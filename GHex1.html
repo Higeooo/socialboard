@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>김해 공간 변화 — 읽기·데이터·활동</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&display=swap" rel="stylesheet">
+<!-- ★ Firebase 설정: YOUR_PROJECT_ID를 실제 프로젝트 ID로 교체하세요 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#1b2a4a;        /* 본문·제목·기본 버튼 */
+  --ink-soft:#5a6680;   /* 보조 텍스트 */
+  --ink-faint:#9aa0ae;  /* 힌트·placeholder급 텍스트 */
+  --line:#dde2ea;       /* 테두리 기본 */
+  --bg:#eef1f4;         /* 페이지 배경 */
+  --surface:#ffffff;    /* 카드 배경 */
+  --bg-soft:#f5f7fa;    /* 안내 박스 배경(단일) */
+  --accent:#3a6ea5;     /* 상호작용(포커스·버튼·활성탭) · 내외동 */
+  --green:#2a9a5c;      /* 연결단서(cue)·완료 상태 · 장유 */
+  --red:#c0392b;        /* 열린질문(openq)·삭제·필수경고 · 동상동 */
+  --orange:#d4820a;     /* 주촌 전용 */
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;
+     background:var(--bg);color:var(--ink);padding-bottom:30px;}
+.tab-nav{display:flex;background:var(--ink);padding:0 14px;position:sticky;top:0;z-index:20;
+         box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.tab-btn{flex:1;padding:13px 6px;border:none;background:none;color:rgba(255,255,255,.55);
+         font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;
+         font-family:inherit;transition:all .2s;}
+.tab-btn.on{color:#fff;border-bottom-color:var(--accent);}
+.tab-content{display:none;max-width:640px;margin:0 auto;padding:16px 14px 20px;}
+
+/* 읽기자료 — 지역 헤더는 4색 고정 팔레트만 사용 */
+.doc h1{font-size:19px;font-weight:900;margin-bottom:4px;}
+.doc .lead{font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line);}
+.doc h2{font-size:15px;font-weight:800;margin:20px 0 8px;padding:6px 11px;border-radius:8px;}
+.h2-old{background:rgba(192,57,43,.10);color:var(--red);}
+.h2-naewoi{background:rgba(58,110,165,.10);color:var(--accent);}
+.h2-jangyu{background:rgba(42,154,92,.10);color:var(--green);}
+.h2-juchon{background:rgba(212,130,10,.10);color:var(--orange);}
+.doc p{font-size:14px;margin-bottom:10px;line-height:1.78;}
+.given{background:rgba(58,110,165,.10);padding:1px 5px;border-radius:4px;font-weight:700;color:var(--accent);}
+.cue{color:var(--green);font-weight:700;} .openq{color:var(--red);font-weight:700;}
+.q-box{background:var(--bg-soft);border-radius:11px;padding:14px 16px;margin-top:18px;font-size:13px;}
+.q-box b{color:var(--ink);display:block;margin-bottom:6px;} .q-box li{margin-left:18px;margin-bottom:4px;}
+.synth-box{background:var(--bg-soft);border-radius:12px;padding:16px 18px;margin:20px 0 4px;border:1px dashed var(--ink-faint);}
+.synth-title{font-size:13.5px;font-weight:800;color:var(--ink);margin-bottom:8px;}
+.synth-box p{font-size:14px;line-height:1.78;margin-bottom:10px;}
+.src{font-size:11px;color:var(--ink-faint);margin-top:16px;border-top:1px solid var(--line);padding-top:8px;}
+
+/* 차트 */
+.chart-card{background:var(--surface);border-radius:14px;padding:18px;
+            box-shadow:0 4px 16px rgba(27,42,74,.09);margin-bottom:16px;}
+.chart-title{font-size:13.5px;font-weight:800;margin-bottom:2px;}
+.chart-sub{font-size:11.5px;color:var(--ink-soft);margin-bottom:12px;}
+.chart-desc{font-size:13px;color:var(--ink);line-height:1.7;background:var(--bg-soft);border-radius:8px;padding:10px 12px;margin-top:10px;}
+.chart-wrap{position:relative;height:240px;}
+.ev-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;}
+.ev{background:var(--bg-soft);color:var(--ink-soft);font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;}
+.ev.red{color:var(--red);} .ev.green{color:var(--green);} .ev.orange{color:var(--orange);} .ev.gray{color:var(--ink-soft);}
+.insight{background:var(--bg-soft);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12px;line-height:1.7;}
+.insight b{color:var(--ink);} .csrc{font-size:10.5px;color:var(--ink-faint);margin-top:6px;text-align:right;}
+
+/* 화살표 활동 */
+.hd{background:var(--ink);color:#fff;border-radius:14px;padding:14px 18px;margin-bottom:12px;}
+.hd h1{font-size:16px;font-weight:800;margin-bottom:3px;} .hd p{font-size:12px;opacity:.72;}
+.gr{display:flex;gap:8px;margin-bottom:12px;}
+.gr input{flex:1;padding:10px 13px;border:2px solid var(--line);border-radius:10px;
+          font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink);}
+.gr input:focus{outline:none;border-color:var(--accent);}
+.step-bar{background:var(--surface);border-radius:11px;padding:11px 14px;margin-bottom:10px;
+          box-shadow:0 2px 8px rgba(27,42,74,.08);}
+.slb{font-size:13px;font-weight:800;margin-bottom:2px;} .sds{font-size:11.5px;color:var(--ink-soft);}
+.guide{background:var(--bg-soft);border-radius:11px;padding:11px 14px;margin-bottom:10px;
+       font-size:12.5px;color:var(--ink);line-height:1.6;}
+.guide b{color:var(--ink);font-weight:700;}
+.mc{background:var(--surface);border-radius:16px;padding:10px;box-shadow:0 4px 18px rgba(27,42,74,.10);
+    margin-bottom:10px;position:relative;}
+.mc svg{display:block;width:100%;border-radius:8px;}
+.zoom-btn{position:absolute;top:18px;right:18px;background:rgba(27,42,74,.72);color:#fff;
+          border:none;border-radius:8px;font-size:12px;font-weight:700;padding:6px 11px;
+          cursor:pointer;display:none;z-index:5;}
+.zoom-btn.show{display:block;}
+.zoom-hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);
+           background:rgba(27,42,74,.65);color:#fff;font-size:11px;font-weight:700;
+           padding:5px 13px;border-radius:20px;pointer-events:none;white-space:nowrap;}
+.cb{display:none;width:100%;padding:8px;border:1.5px dashed var(--red);background:rgba(192,57,43,.06);
+    color:var(--red);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;}
+.cb.show{display:block;}
+.sel-on{stroke-width:5!important;filter:drop-shadow(0 0 7px currentColor);}
+.rq{margin-bottom:11px;} .rq label{font-size:12.5px;font-weight:700;display:block;margin-bottom:5px;}
+.opt{font-size:11px;color:var(--ink-faint);font-weight:400;}
+.rq input,.rq textarea{width:100%;padding:9px 12px;border:2px solid var(--line);border-radius:9px;
+  font-size:13.5px;font-family:inherit;color:var(--ink);}
+.rq input:focus,.rq textarea:focus{outline:none;border-color:var(--accent);}
+.rq textarea{resize:vertical;min-height:60px;}
+.lw{margin-bottom:10px;display:none;} .lt{font-size:13px;font-weight:800;margin-bottom:7px;padding-left:3px;}
+.ac{background:var(--surface);border-radius:12px;padding:12px 13px;box-shadow:0 2px 8px rgba(27,42,74,.08);
+    margin-bottom:7px;border:1px solid var(--line);}
+.ah{font-size:13px;font-weight:800;margin-bottom:5px;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;}
+.adel{margin-left:auto;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:700;}
+.ab{font-size:12.5px;color:var(--ink-soft);line-height:1.65;} .ak{font-weight:700;color:var(--ink);}
+.sw{display:none;margin-top:4px;}
+.bsub{width:100%;padding:15px;background:var(--ink);color:#fff;border:none;border-radius:12px;
+      font-size:16px;font-weight:800;cursor:pointer;}
+.bsub:disabled{opacity:.6;cursor:wait;}
+.ds{display:none;background:var(--surface);border-radius:16px;padding:28px 20px;
+    box-shadow:0 4px 18px rgba(27,42,74,.10);text-align:center;}
+.ds.show{display:block;}
+.di{font-size:48px;margin-bottom:12px;} .dt{font-size:19px;font-weight:800;margin-bottom:6px;}
+.dd{font-size:14px;color:var(--ink-soft);margin-bottom:20px;line-height:1.6;}
+.dsm{text-align:left;background:var(--bg-soft);border-radius:12px;padding:14px;font-size:13px;line-height:1.7;}
+.brst{margin-top:16px;width:100%;padding:12px;background:var(--bg-soft);color:var(--ink-soft);border:none;
+      border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* ── 협의안 탭 — 디지털 교과서 스타일 ── */
+.plan-section{background:var(--surface);padding:22px 20px 26px;margin-bottom:14px;}
+.plan-section h3{font-family:'Noto Serif KR',serif;font-weight:700;font-size:15.5px;color:var(--ink);
+                 margin-bottom:3px;}
+.plan-section > p{font-size:11.5px;color:var(--ink-faint);margin-bottom:16px;}
+.prob-grid{border-top:1px solid var(--line);}
+.prob-card{display:flex;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer;}
+.prob-card:hover{background:var(--bg-soft);}
+.prob-card input[type=radio]{appearance:none;width:16px;height:16px;border:1.5px solid var(--ink-faint);
+  border-radius:50%;margin-top:2px;flex-shrink:0;position:relative;cursor:pointer;}
+.prob-card input[type=radio]:checked{border-color:var(--ink);}
+.prob-card input[type=radio]:checked::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--ink);}
+.prob-card.chosen{background:var(--bg-soft);}
+.prob-card strong{font-size:13.5px;font-weight:700;color:var(--ink);display:block;margin-bottom:3px;}
+.prob-card span{font-size:12px;color:var(--ink-soft);line-height:1.55;}
+.plan-field{padding:18px 0;border-bottom:1px solid var(--line);}
+.plan-field:first-of-type{padding-top:2px;}
+.plan-field label{font-weight:700;font-size:13.5px;color:var(--ink);display:block;margin-bottom:3px;
+  font-family:'Noto Serif KR',serif;}
+.plan-field .hint{font-size:11px;color:var(--ink-faint);font-weight:400;display:block;margin:2px 0 9px;}
+.plan-field input,.plan-field textarea{width:100%;border:none;border-bottom:1px solid var(--ink-faint);
+  background:transparent;border-radius:0;padding:6px 2px;font-size:14px;font-family:inherit;
+  color:var(--ink);resize:none;line-height:1.7;}
+.plan-field input:focus,.plan-field textarea:focus{outline:none;border-bottom:1.5px solid var(--ink);}
+.plan-field textarea{min-height:52px;}
+.agent-grid{display:flex;flex-wrap:wrap;gap:5px 20px;}
+.agent-btn{display:flex;align-items:center;gap:7px;padding:5px 0;border:none;background:none;
+  font-size:13px;font-weight:400;color:var(--ink-soft);cursor:pointer;font-family:inherit;}
+.agent-btn::before{content:'';width:14px;height:14px;border:1.5px solid var(--ink-faint);flex-shrink:0;}
+.agent-btn.on{color:var(--ink);font-weight:700;}
+.agent-btn.on::before{content:'✓';background:var(--ink);border-color:var(--ink);color:#fff;
+  font-size:10px;display:flex;align-items:center;justify-content:center;}
+.next-box{background:var(--bg-soft);padding:14px 16px;}
+.next-box label{font-size:13px;font-weight:700;color:var(--ink);display:block;margin-bottom:6px;}
+.next-box .sub{font-size:11.5px;color:var(--ink-soft);margin-bottom:9px;}
+.next-box textarea{width:100%;border:none;border-bottom:1px solid var(--ink-faint);background:transparent;
+  padding:6px 2px;font-size:14px;font-family:inherit;color:var(--ink);resize:none;min-height:48px;line-height:1.7;}
+.next-box textarea:focus{outline:none;border-bottom:1.5px solid var(--ink);}
+.plan-submit{width:100%;padding:15px;background:var(--ink);color:#fff;border:none;
+             font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;letter-spacing:.02em;
+             cursor:pointer;margin-top:10px;}
+.plan-submit:disabled{opacity:.55;cursor:wait;}
+.plan-done{display:none;border:1px solid var(--line);padding:22px 18px;text-align:center;}
+.plan-done.show{display:block;}
+.plan-done .di{font-size:34px;margin-bottom:8px;}
+.plan-done .dt{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.plan-done .ds{font-size:13px;color:var(--ink-soft);}
+
+
+/* ── 선택 항목 토글 ── */
+.opt-toggle{display:flex;align-items:center;gap:10px;padding:11px 14px;
+            background:var(--bg-soft);border:1.5px dashed var(--ink-faint);border-radius:10px;
+            cursor:pointer;margin-bottom:0;user-select:none;transition:background .15s;}
+.opt-toggle:hover{background:var(--line);}
+.opt-toggle-label{font-size:13px;font-weight:700;color:var(--ink-soft);flex:1;}
+.opt-badge{background:var(--line);color:var(--ink-soft);font-size:11px;font-weight:800;
+           padding:3px 9px;border-radius:12px;}
+.opt-arrow{font-size:12px;color:var(--ink-faint);transition:transform .2s;}
+.opt-arrow.open{transform:rotate(180deg);}
+.opt-content{display:none;padding-top:12px;border-left:3px solid var(--line);
+             margin-left:6px;padding-left:14px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<nav class="tab-nav">
+  <button class="tab-btn on" id="tbtn-reading" onclick="showTab('reading')">읽으며 살피는 김해</button>
+  <button class="tab-btn" id="tbtn-data"    onclick="showTab('data')">데이터로 살피는 김해</button>
+  <button class="tab-btn" id="tbtn-arrow"   onclick="showTab('arrow')">[활동1] 흐름 시각화</button>
+  <button class="tab-btn" id="tbtn-plan"    onclick="showTab('plan')">[활동2] 협의안 작성</button>
+</nav>
+<div class="tab-content" id="tab-reading" style="display:block;"><div class="doc">
+  <h1>김해는 어떻게 지금의 모습이 되었을까?</h1>
+  <div class="lead">네 동네에서 일어난 일과 단서를 담았습니다. 단서를 따라 데이터 탭에서 흐름을 확인해 보세요. · 읽기 약 6분</div>
+  <p>도시의 중심은 한자리에 머무르지 않습니다. 김해의 중심도 지난 30년 동안 한 동네에서 다른 동네로 옮겨 다녔습니다.</p>
+  <h2 class="h2-old">① 동상동·회현동</h2>
+  <p>1980년대까지 동상동 일대는 김해에서 가장 번화한 '시내'였습니다. 오일장에서 출발한 동상시장을 중심으로 극장과 상점이 모여 있었습니다. <span class="cue">그런데 바로 이 무렵, 가까운 내외동에서는 큰 변화가 막 시작되고 있었습니다.</span></p>
+  <p><span class="given">공간 탐색에서 확인했듯 동상동 건물의 30년 이상 비율은 67%로, 네 지역 중 가장 높습니다.</span> 그만큼 오래 이 자리를 지켜온 동네라는 뜻이기도 합니다.</p>
+  <p>오늘날 이 거리에는 외국인을 위한 가게 60여 곳이 모여 '경남의 이태원'이라 불립니다. 특히 주말이면 각지에서 사람들이 모여들어 거리가 붐빕니다. <span class="openq">이들은 어디에서, 왜 이 오래된 거리로 오는 걸까요?</span></p>
+  <h2 class="h2-naewoi">② 내외동</h2>
+  <p>1988년 택지개발이 계획되어 1990년대 중반 논밭 위에 대규모 아파트 단지가 들어섰습니다. 반듯한 도로와 공원, 학원가를 갖춘 김해 최초의 계획 신시가지였습니다.</p>
+  <p><span class="cue">내외동이 한창 부풀어 오르던 이 시기, 동상동의 인구 그래프는 어느 방향으로 움직이고 있었는지 나란히 비교해 보세요.</span></p>
+  <p>당시로선 가장 '새 동네'였던 내외동도 이제 준공된 지 20~30년이 되어갑니다. <span class="given">공간 탐색에서 확인했듯 내외동 건물의 30년 이상 비율은 28%</span>로, 일부 단지에서는 재건축·리모델링 이야기도 나오기 시작했습니다.</p>
+  <h2 class="h2-jangyu">③ 장유</h2>
+  <p>1990년대 말부터 장유에는 김해 역사상 가장 큰 신도시가 조성되었습니다. 면적은 김해의 11%지만 현재 김해 인구의 약 3분의 1이 이곳에 삽니다. <span class="given">공간 탐색에서 확인했듯 장유의 30년 이상 건물 비율은 0%에 가깝습니다</span> — 김해에서 가장 최근에, 가장 높게 지어진 동네라는 뜻입니다.</p>
+  <p><span class="cue">장유의 인구가 가파르게 치솟던 바로 그때, 내외동의 그래프에서는 반대 방향의 움직임이 나타납니다. 두 곡선을 겹쳐 보면 무엇이 보일까요?</span> 사실 장유는 애초에 산 하나 너머 창원의 배후 주거지로 계획된 곳이었습니다. <span class="given">창원터널 하나만 넘으면 창원국가산업단지가 있어, 이주민의 20~30%는 그곳에 일터를 둔 부산·창원 사람들이었던 것으로 조사되었습니다.</span></p>
+  <p><span class="openq">그렇다면 부산·창원에서 장유로의 순이동은 언제 가장 컸을까요? 그리고 늘어난 인구만큼 학교·도로·공원도 같은 속도로 늘었을까요?</span></p>
+  <h2 class="h2-juchon">④ 주촌면</h2>
+  <p>오래도록 농촌이던 주촌은 2017년까지 인구가 5천 명 아래로 조금씩 줄던 곳이었습니다. 2000년대 이후 여러 산업(농공)단지가 들어서고 2018년부터 아파트 약 8천 세대가 입주하면서 빠르게 커졌습니다.</p>
+  <p><span class="given">김해의 등록외국인 약 70%는 주촌·한림·진영 등 공장이 모인 지역에 거주합니다.</span> <span class="cue">이 사실과 동상동의 주말 풍경을 연결해 보세요.</span></p>
+  <div class="synth-box">
+    <div class="synth-title">🧩 네 지역을 이어서 보면</div>
+    <p>김해의 도시지역은 한 번에 계획되지 않고 시기마다 다른 자리에 새로 조성되며 <span class="given">불연속적으로 확장</span>되었습니다. 그 결과 <span class="given">행정 서비스와 인프라도 지역에 따라 차이</span>를 보입니다. <span class="given">김해시청도 장유에는 별도의 '장유출장소'를 두고 있습니다.</span></p>
+  </div>
+  <div class="q-box"><b>🔍 데이터 탭에서 확인해 봅시다.</b>
+    <ul>
+      <li>내외동이 커질 때 동상동은? 장유가 커질 때 내외동은?</li>
+      <li>외국인은 평일에 어디서 일하고, 주말에 어디로 모일까요?</li>
+      <li>부산·창원에서 장유로의 순이동은 언제 폭발했나요?</li>
+    </ul>
+  </div>
+  <div class="src">행정안전부 주민등록인구(1993~2025), 법무부 등록외국인(1993~2024), 통계청 인구이동(1995~2025) / 한국경제·부산일보·디지털김해문화대전</div>
+</div></div>
+<div class="tab-content" id="tab-data">
+<div class="chart-card">
+  <div class="chart-title">① 지역별 주민등록 인구 변화 (1993–2025)</div>
+  <div class="chart-sub">동상동+회현동 · 내외동 · 장유 · 주촌면 — 단위: 명</div>
+  <div class="chart-wrap"><canvas id="cPop"></canvas></div>
+  <div class="chart-desc">👀 1996년, 2002년 등 큰 변화가 나타난 시기를 주의 깊게 관찰해 보세요.</div>
+  <div class="csrc">행정안전부 주민등록인구현황(KOSIS)</div>
+</div>
+<div class="chart-card">
+  <div class="chart-title">② 부산·창원 ↔ 김해 순이동 (1995–2025)</div>
+  <div class="chart-sub">양수(+) = 김해 순유입 · 음수(−) = 김해 순유출 — 단위: 명</div>
+  <div class="chart-wrap"><canvas id="cMig"></canvas></div>
+  <div class="ev-row">
+    <span class="ev green">2002 장유 신도시 → 역대 최대 순유입</span>
+  </div>
+  <div class="chart-desc">💡 <b>순이동이란?</b> 한 지역으로 들어온 사람 수에서 나간 사람 수를 뺀 값입니다. 그래프가 위(+)로 갈수록 부산·창원에서 김해로 옮겨온 사람이 더 많았다는 뜻이고, 아래(−)로 갈수록 김해에서 부산·창원으로 옮겨간 사람이 더 많았다는 뜻입니다.</div>
+  <div class="csrc">통계청 국내인구이동통계(KOSIS)</div>
+</div>
+<div class="chart-card">
+  <div class="chart-title">③ 김해시 등록외국인 현황 (1993–2024)</div>
+  <div class="chart-sub">김해시 전체 기준 — 단위: 명</div>
+  <div class="chart-wrap"><canvas id="cFor"></canvas></div>
+  <div class="ev-row">
+    <span class="ev red">2020 코로나19 일시 감소</span>
+    <span class="ev orange">2023–24 역대 최고치</span>
+  </div>
+  <div class="csrc">법무부 출입국·외국인정책본부(KOSIS)</div>
+</div></div>
+<div class="tab-content" id="tab-plan">
+  <div class="plan-section">
+    <h3>🏙️ 김해의 공간 변화가 만들어낸 문제를 하나 선택하세요</h3>
+    <p style="font-size:12px;color:#7a8aa0;margin-bottom:12px;">우리 모둠이 그린 흐름도와 가장 관련 있는 문제를 하나 고르세요.</p>
+    <div class="prob-grid">
+      <label class="prob-card" id="pc1">
+        <input type="radio" name="prob" value="구도심 공동화" onchange="pickProb(this)"/>
+        <div><strong>구도심 공동화</strong>
+          <span>동상동·회현동에 살던 주민들이 다른 곳으로 옮겨가며 줄어드는 거주 인구와 노후 주거 환경</span></div>
+      </label>
+      <label class="prob-card" id="pc2">
+        <input type="radio" name="prob" value="신도시 기반시설 부족" onchange="pickProb(this)"/>
+        <div><strong>신도시 기반시설 부족</strong>
+          <span>장유 급격한 인구 증가 대비 학교·교통·공원 부족</span></div>
+      </label>
+      <label class="prob-card" id="pc3">
+        <input type="radio" name="prob" value="구도심 상권 전환과 갈등" onchange="pickProb(this)"/>
+        <div><strong>구도심 상권 전환과 갈등</strong>
+          <span>동상동이 외국인 특화 거리로 변화하며 기존 주민·상인과의 관계 변화</span></div>
+      </label>
+      <label class="prob-card" id="pc4">
+        <input type="radio" name="prob" value="생활권 분절과 행정·인프라 비효율" onchange="pickProb(this)"/>
+        <div><strong>생활권 분절과 행정·인프라 비효율</strong>
+          <span>구도심(동상동·내외동 일대)과 신도시(장유)로 생활권이 나뉘며 행정·인프라 이중 투자와 서비스 격차</span></div>
+      </label>
+    </div>
+  </div>
+
+  <div class="plan-section">
+    <h3>📋 협의안 작성</h3>
+    <div class="plan-field">
+      <label>① 관련 흐름과 핵심 원인 <span class="hint">(흐름도 탭에서 그린 화살표 중 하나를 반드시 인용 · 데이터 근거 포함)</span></label>
+      <textarea id="pf-arrow" placeholder="예: 내외동→장유 흐름 — 2001년 이후 장유 신도시 개발로 내외동 인구가 이동하면서 구도심 상가 공실률이 높아졌다."></textarea>
+      <input type="hidden" id="pf-cause" value=""/>
+    </div>
+    <div class="plan-field">
+      <label>② 해결 주체 <span class="hint">(복수 선택 가능)</span></label>
+      <div class="agent-grid">
+        <button class="agent-btn" onclick="toggleAgent(this)">🏛️ 김해시</button>
+        <button class="agent-btn" onclick="toggleAgent(this)">👥 주민·공동체</button>
+        <button class="agent-btn" onclick="toggleAgent(this)">🏢 기업·상인</button>
+        <button class="agent-btn" onclick="toggleAgent(this)">🏗️ 중앙정부</button>
+        <button class="agent-btn" onclick="toggleAgent(this)">🎓 학교·교육기관</button>
+        <button class="agent-btn" onclick="toggleAgent(this)">🧑‍🎓 청소년·학생</button>
+      </div>
+    </div>
+    <div class="plan-field">
+      <label>③ 구체적 방안 <span class="hint">(해결 주체가 무엇을 해야 하는가)</span></label>
+      <textarea id="pf-plan" placeholder="선택한 문제에 따라 방안이 달라집니다. 해결 주체가 구체적으로 무엇을 해야 하는지 적어보세요."></textarea>
+    </div>
+    
+  <div class="opt-toggle" onclick="toggleOpt()" id="optToggle">
+    <span class="opt-toggle-label">✏️ 추가로 더 작성하기</span>
+    <span class="opt-badge">선택</span>
+    <span class="opt-arrow" id="optArrow">▼</span>
+  </div>
+  <div class="opt-content" id="optContent">
+    <div class="plan-field">
+      <label>④ 예상되는 어려움</label>
+      <input id="pf-limit" type="text" placeholder="예: 예산 확보, 기존 임차인과의 갈등, 단기 효과 기대 어려움"/>
+    </div>
+    <div class="next-box" style="margin-bottom:4px;">
+      <label>🤖 다음 시간(2차시) 지역 주민 챗봇에게 꼭 물어보고 싶은 것</label>
+      <div class="sub" style="margin-bottom:8px;">이 문제를 직접 겪고 있는 동상동 상인·장유 주민·주촌 노동자라면 어떻게 생각할지 미리 상상해보세요.</div>
+      <textarea id="pf-q" placeholder="예: 장유로 이사 온 주민이라면 구도심 공동화를 어떻게 느낄까요?"></textarea>
+    </div>
+  </div>
+
+  <button class="plan-submit" id="planSubmitBtn" onclick="submitPlan()">협의안 제출하기 →</button>
+  <div class="plan-done" id="planDone">
+    <div class="di">✅</div>
+    <div class="dt">협의안 제출 완료</div>
+    <div class="ds">다음 시간, 지역 주민 챗봇과의 대화를 통해<br>이 협의안을 함께 다듬어 봅시다.</div>
+  </div>
+
+  </div>
+</div>
+<div class="tab-content" id="tab-arrow"><div id="mw"><div class="hd"><h1>🗺️ 김해의 인구 흐름 그리기</h1><p>읽기자료와 데이터를 근거로 지역 간 인구 흐름을 흐름로 표현해봅시다</p></div>
+<div class="gr"><input id="gn" type="text" placeholder="모둠 이름 입력 (예: 1모둠)"/></div>
+<div class="guide"><b>활동 방법</b> — 출발지를 탭 → 도착지를 탭 → 근거 작성 → 흐름 시각화 제출<br>읽기자료·데이터를 근거로 2개 이상의 이동 루트를 표현해 보세요.</div>
+<div class="step-bar" id="sb"><div class="slb" id="sl">① 지도에서 네 지역의 위치를 확인하세요</div><div class="sds" id="sd">지역을 탭하면 지도가 자동으로 확대됩니다</div></div>
+<div class="mc" id="mc">
+<svg id="ms" viewBox="0 0 480 430" xmlns="http://www.w3.org/2000/svg"><defs><marker id="mk-arrow" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#1b2a4a"/></marker><marker id="mk-tmp" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#3a4a60"/></marker></defs><rect width="480" height="430" fill="#f4f7fa"/><path d="M 266.7,351.0 L 265.7,353.0 L 271.2,355.8 L 271.1,357.5 L 272.6,358.1 L 270.6,359.5 L 270.2,362.2 L 274.8,367.2 L 277.3,367.3 L 276.4,370.8 L 273.1,370.1 L 268.2,371.7 L 269.0,378.6 L 271.3,381.7 L 265.5,382.9 L 257.6,372.5 L 257.9,370.7 L 259.3,370.3 L 260.8,371.8 L 262.7,371.7 L 263.7,369.0 L 266.7,366.4 L 265.7,366.3 L 264.9,362.9 L 259.9,359.4 L 250.9,358.9 L 248.4,360.6 L 235.1,364.0 L 232.5,367.6 L 232.7,370.6 L 231.3,373.2 L 223.1,371.8 L 220.6,374.4 L 216.1,374.8 L 213.2,376.8 L 207.8,376.1 L 205.3,373.4 L 202.5,373.1 L 199.4,370.8 L 190.9,372.6 L 187.5,370.6 L 183.3,372.0 L 181.3,374.0 L 177.1,372.8 L 174.1,373.5 L 173.1,375.4 L 164.3,375.6 L 162.8,374.2 L 153.8,372.2 L 146.6,367.0 L 141.1,364.9 L 136.8,360.0 L 129.5,361.0 L 128.1,365.6 L 122.3,362.2 L 117.0,364.0 L 114.3,362.6 L 110.7,362.7 L 109.9,358.6 L 112.5,352.3 L 113.9,342.4 L 113.3,338.1 L 116.4,331.4 L 116.2,328.8 L 121.2,324.9 L 122.2,320.6 L 121.2,315.5 L 117.0,313.5 L 114.4,310.4 L 114.9,309.2 L 100.8,310.2 L 94.3,308.4 L 87.7,298.3 L 88.5,296.6 L 86.4,292.3 L 86.3,287.1 L 84.5,285.7 L 84.4,283.8 L 87.4,281.8 L 89.4,278.6 L 91.4,263.4 L 87.8,257.1 L 84.6,259.2 L 83.2,258.2 L 82.4,249.7 L 76.3,240.4 L 72.3,227.2 L 73.3,222.7 L 66.8,210.9 L 66.9,207.6 L 65.2,205.7 L 65.9,199.8 L 67.1,198.3 L 63.9,196.0 L 62.0,184.5 L 57.5,181.5 L 56.4,179.2 L 54.1,178.9 L 53.9,177.5 L 52.1,178.3 L 52.4,176.3 L 49.6,176.1 L 50.6,174.8 L 48.9,173.7 L 50.8,173.3 L 49.6,170.4 L 50.8,168.5 L 52.5,169.5 L 55.0,167.2 L 69.6,168.9 L 76.3,166.5 L 73.5,164.0 L 72.1,160.2 L 74.7,155.6 L 74.5,149.7 L 79.4,145.9 L 84.6,151.4 L 97.0,158.7 L 104.5,157.0 L 108.5,152.1 L 108.9,145.6 L 107.3,138.4 L 108.4,136.9 L 112.3,135.9 L 117.1,136.1 L 117.2,126.3 L 118.2,126.0 L 120.5,128.9 L 119.3,132.9 L 120.8,133.2 L 125.5,128.3 L 126.8,124.3 L 133.4,117.7 L 146.4,116.2 L 159.2,109.3 L 169.5,96.5 L 178.0,78.5 L 182.6,74.6 L 193.0,68.9 L 206.6,66.9 L 244.5,47.1 L 251.2,47.1 L 256.3,52.1 L 260.0,65.1 L 262.3,65.0 L 264.1,69.9 L 262.1,70.0 L 265.1,79.8 L 268.9,83.8 L 282.0,88.3 L 301.4,87.4 L 307.9,88.9 L 321.1,98.5 L 347.6,124.4 L 354.1,125.5 L 367.2,130.8 L 374.0,135.9 L 378.0,141.9 L 379.3,146.4 L 380.8,161.7 L 388.6,171.2 L 390.2,176.3 L 394.2,181.2 L 400.8,186.0 L 406.0,187.7 L 417.8,195.6 L 427.1,205.3 L 431.1,215.1 L 413.2,260.0 L 407.9,265.6 L 402.6,269.0 L 386.9,274.6 L 363.8,278.5 L 354.2,278.7 L 348.7,274.6 L 343.8,276.2 L 331.6,286.3 L 320.9,291.4 L 318.6,289.5 L 316.8,290.8 L 311.7,283.2 L 309.1,282.8 L 307.8,286.0 L 307.3,284.4 L 309.0,282.7 L 308.2,282.5 L 303.0,286.8 L 308.6,293.0 L 302.9,293.3 L 293.2,296.4 L 284.3,294.3 L 281.1,294.8 L 275.6,300.5 L 272.6,301.1 L 267.3,308.7 L 262.5,312.9 L 269.7,325.0 L 269.6,331.2 L 276.3,338.7 L 274.6,343.8 L 276.1,353.4 L 266.7,351.0 Z" fill="#eaf0f6" stroke="#2a3a5a" stroke-width="2.8" stroke-linejoin="round"/><text x="330" y="100" font-family="-apple-system,'Noto Sans KR'" font-size="14" font-weight="800" fill="#2a3a5a" opacity=".25">김해시</text><g id="tile-juchon" onclick="hN('juchon')" style="cursor:pointer;"><path id="rp-juchon" d="M 194.0,213.9 L 201.7,217.5 L 202.6,219.0 L 204.2,220.1 L 208.0,221.7 L 210.2,224.0 L 213.3,224.0 L 216.9,222.8 L 218.9,224.8 L 220.8,224.2 L 222.3,222.6 L 223.5,223.7 L 228.3,222.0 L 231.1,217.1 L 232.9,217.3 L 235.0,220.7 L 237.0,222.2 L 239.3,222.9 L 240.3,225.1 L 242.4,226.4 L 243.7,229.4 L 244.2,234.8 L 243.1,236.9 L 243.0,240.4 L 243.6,243.5 L 245.4,244.0 L 246.3,245.1 L 244.3,249.5 L 241.8,251.8 L 241.6,252.8 L 239.4,254.3 L 236.6,259.5 L 236.1,264.9 L 234.8,267.4 L 235.3,269.0 L 234.9,269.7 L 234.1,269.4 L 232.6,272.0 L 234.0,272.8 L 235.9,275.0 L 237.2,280.6 L 234.2,281.8 L 232.9,282.9 L 229.8,284.1 L 228.7,283.9 L 227.6,284.7 L 227.1,290.7 L 228.9,293.2 L 229.2,295.0 L 223.1,300.2 L 219.7,304.9 L 219.2,306.7 L 207.9,299.8 L 207.7,299.0 L 208.6,298.9 L 208.6,298.0 L 207.3,295.9 L 205.2,293.9 L 205.1,291.9 L 203.9,290.1 L 203.2,287.2 L 201.8,285.2 L 199.2,283.8 L 199.3,284.3 L 196.3,286.7 L 190.8,288.5 L 185.9,288.9 L 181.5,288.1 L 177.4,288.7 L 174.3,288.6 L 172.6,288.0 L 170.8,288.5 L 167.8,287.3 L 161.9,283.1 L 161.3,283.8 L 161.8,283.1 L 161.1,283.1 L 159.1,280.9 L 155.5,279.4 L 156.0,278.3 L 155.3,276.7 L 158.4,276.6 L 160.3,275.0 L 161.4,273.0 L 163.3,272.7 L 164.0,271.9 L 167.4,271.7 L 167.0,270.7 L 167.9,265.2 L 167.4,263.0 L 168.1,261.8 L 169.5,261.2 L 170.0,258.6 L 171.0,258.3 L 171.6,251.1 L 171.5,249.2 L 166.4,240.4 L 170.6,239.4 L 172.0,235.9 L 172.8,231.4 L 177.7,230.7 L 178.0,229.7 L 179.5,229.6 L 178.8,227.9 L 180.5,226.1 L 179.5,223.8 L 181.6,224.3 L 187.9,218.6 L 189.3,218.6 L 189.4,215.6 L 190.1,215.9 L 194.0,213.9 Z" fill="#fbeed5" stroke="#d4820a" stroke-width="2.4"/><text x="203.1" y="264.4" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="11.5" font-weight="800" fill="#7a4200">🏭 주촌면</text></g>
+<g id="tile-jangyu" onclick="hN('jangyu')" style="cursor:pointer;"><path id="rp-jangyu" d="M 225.8,338.6 L 230.1,340.7 L 232.5,341.1 L 245.9,337.4 L 248.3,337.4 L 250.1,338.4 L 254.9,343.0 L 267.1,350.1 L 265.7,353.0 L 268.5,355.0 L 271.2,355.8 L 271.1,357.5 L 272.6,358.1 L 270.6,359.5 L 270.2,362.2 L 272.5,363.7 L 273.7,366.4 L 274.8,367.2 L 275.9,366.9 L 277.3,367.3 L 276.7,367.8 L 276.4,370.8 L 275.4,370.2 L 274.3,370.6 L 273.1,370.1 L 270.9,370.8 L 269.6,370.5 L 268.2,371.7 L 269.0,372.9 L 269.0,378.6 L 271.3,381.7 L 270.2,382.5 L 269.8,381.9 L 268.7,382.6 L 268.2,382.1 L 265.5,382.9 L 257.6,372.5 L 257.9,370.7 L 259.3,370.3 L 260.8,371.8 L 262.7,371.7 L 263.7,369.0 L 264.8,367.8 L 266.4,367.4 L 266.7,366.4 L 265.7,366.3 L 264.9,362.9 L 260.9,360.6 L 259.9,359.4 L 257.3,359.8 L 255.3,359.1 L 253.5,359.5 L 250.9,358.9 L 249.9,359.2 L 248.4,360.6 L 244.5,361.7 L 242.0,361.6 L 240.5,363.1 L 238.5,362.8 L 235.1,364.0 L 234.2,364.9 L 234.8,365.5 L 233.0,366.6 L 232.5,367.6 L 232.7,370.6 L 231.3,373.2 L 228.5,372.2 L 223.1,371.8 L 220.6,374.4 L 218.2,375.1 L 216.1,374.8 L 214.3,375.4 L 213.2,376.8 L 207.8,376.1 L 205.3,373.4 L 203.4,372.8 L 202.5,373.1 L 201.3,371.6 L 199.4,370.8 L 196.4,372.1 L 194.2,371.4 L 190.9,372.6 L 187.5,370.6 L 183.3,372.0 L 182.6,373.3 L 181.3,374.0 L 178.9,374.0 L 177.1,372.8 L 174.1,373.5 L 173.1,375.4 L 170.4,374.9 L 166.9,375.7 L 164.3,375.6 L 162.8,374.2 L 159.3,374.1 L 153.8,372.2 L 148.2,368.8 L 146.6,367.0 L 141.1,364.9 L 140.7,363.8 L 137.2,361.2 L 136.8,360.0 L 134.8,360.8 L 129.5,361.0 L 129.6,363.2 L 128.1,365.6 L 122.3,362.2 L 117.0,364.0 L 116.4,363.1 L 114.3,362.6 L 110.7,362.7 L 110.9,360.1 L 109.9,358.6 L 110.6,358.1 L 111.0,354.6 L 112.5,352.3 L 113.0,343.7 L 113.9,342.4 L 113.3,338.1 L 116.4,331.4 L 116.2,328.8 L 117.6,328.1 L 119.4,325.6 L 121.2,324.9 L 122.2,320.6 L 121.0,317.0 L 121.5,313.7 L 126.5,310.5 L 127.9,308.4 L 130.9,308.0 L 133.4,308.4 L 137.5,306.6 L 139.8,306.5 L 140.6,305.9 L 140.8,304.5 L 141.9,303.6 L 143.4,304.0 L 148.6,303.2 L 150.4,303.6 L 151.2,302.9 L 153.5,303.0 L 154.4,302.1 L 156.2,302.5 L 157.3,298.2 L 158.7,297.4 L 157.1,291.5 L 156.8,283.2 L 154.8,281.8 L 154.5,281.0 L 155.5,279.4 L 159.1,280.9 L 161.1,283.1 L 161.8,283.1 L 161.3,283.8 L 161.9,283.1 L 167.8,287.3 L 170.8,288.5 L 172.6,288.0 L 174.3,288.6 L 177.4,288.7 L 181.5,288.1 L 188.3,288.8 L 196.3,286.7 L 199.3,284.3 L 199.0,283.8 L 201.8,285.2 L 204.8,291.1 L 205.2,293.9 L 207.3,295.9 L 208.6,298.0 L 208.6,298.9 L 207.7,299.0 L 207.9,299.8 L 219.2,306.7 L 216.9,313.7 L 212.3,320.2 L 212.3,323.9 L 213.3,325.7 L 215.2,327.0 L 222.2,328.0 L 223.5,330.1 L 224.4,336.2 L 225.8,338.6 Z" fill="#dcf1e5" stroke="#2a9a5c" stroke-width="2.4"/><text x="169.9" y="334.8" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="11.5" font-weight="800" fill="#054d23">🏘️ 장유</text></g>
+<g id="tile-naewoi" onclick="hN('naewoi')" style="cursor:pointer;"><path id="rp-naewoi" d="M 249.0,244.9 L 255.8,245.7 L 256.3,246.5 L 255.5,247.3 L 255.5,248.7 L 256.5,249.2 L 257.6,248.7 L 258.4,249.2 L 258.9,248.1 L 259.9,248.0 L 260.1,249.3 L 261.4,250.2 L 263.1,253.1 L 263.8,261.4 L 263.5,268.6 L 264.9,273.1 L 266.7,276.0 L 266.2,276.2 L 266.5,278.0 L 264.3,278.2 L 264.3,280.6 L 260.6,279.5 L 252.1,281.4 L 250.0,278.8 L 246.9,278.2 L 246.2,277.5 L 244.5,278.9 L 237.0,280.9 L 236.1,275.4 L 234.0,272.8 L 232.6,272.0 L 234.1,269.4 L 234.9,269.7 L 235.3,269.0 L 234.8,267.4 L 236.1,264.9 L 236.6,259.5 L 239.4,254.3 L 241.6,252.8 L 241.8,251.8 L 244.3,249.5 L 246.3,245.1 L 247.5,244.9 L 248.5,245.8 L 249.0,244.9 Z" fill="#e1ebf7" stroke="#3a6ea5" stroke-width="2.4"/><line x1="250.0" y1="263.2" x2="250.0" y2="213.2" stroke="#3a6ea5" stroke-width="1.2" opacity=".6"/><circle cx="250.0" cy="263.2" r="3.5" fill="#3a6ea5"/><g transform="translate(250.0,213.2)"><rect x="-42" y="-13" width="84" height="26" rx="6" fill="#fff" stroke="#3a6ea5" stroke-width="1.5"/><text x="0" y="5" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="10" font-weight="800" fill="#14315e">🏢 내외동</text></g></g>
+<g id="tile-dongmi" onclick="hN('dongmi')" style="cursor:pointer;"><path id="rp-dongmi" d="M 280.6,269.6 L 274.4,270.3 L 274.4,272.5 L 273.5,273.3 L 275.7,283.7 L 267.6,285.2 L 267.2,277.6 L 263.5,268.6 L 263.8,265.9 L 269.3,264.9 L 269.8,265.3 L 275.0,262.6 L 275.7,260.5 L 274.7,259.8 L 277.2,257.6 L 275.6,256.0 L 276.8,255.1 L 276.2,255.0 L 276.5,253.3 L 277.9,250.0 L 277.3,245.6 L 278.0,243.8 L 280.8,240.9 L 281.6,242.6 L 285.6,246.4 L 287.5,249.9 L 287.1,250.5 L 285.8,250.6 L 285.4,252.2 L 288.4,256.8 L 288.1,258.6 L 288.8,262.5 L 286.5,265.9 L 286.7,267.7 L 285.1,268.2 L 285.5,270.2 L 282.4,270.4 L 282.1,269.7 L 280.6,269.6 Z" fill="#fbe0dd" stroke="#c0392b" stroke-width="2.4"/><line x1="280.4" y1="263.8" x2="332.4" y2="243.8" stroke="#c0392b" stroke-width="1.2" opacity=".6"/><circle cx="280.4" cy="263.8" r="3.5" fill="#c0392b"/><g transform="translate(332.4,243.8)"><rect x="-42" y="-13" width="84" height="26" rx="6" fill="#fff" stroke="#c0392b" stroke-width="1.5"/><text x="0" y="5" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="10" font-weight="800" fill="#6a1515">🏛️ 동상동·회현동</text></g></g>
+<g id="mk-cw" onclick="hN('ext')" style="cursor:pointer;"><circle cx="78" cy="400" r="24" fill="#e2e8f0" stroke="#6a7888" stroke-width="2"/><text x="78" y="404" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="10.5" font-weight="800" fill="#445566">창원</text></g>
+<g id="mk-bu" onclick="hN('ext')" style="cursor:pointer;"><circle cx="348" cy="400" r="24" fill="#e2e8f0" stroke="#6a7888" stroke-width="2"/><text x="348" y="404" text-anchor="middle" font-family="-apple-system,'Noto Sans KR'" font-size="10.5" font-weight="800" fill="#445566">부산</text></g><g id="al"></g></svg>
+<button class="zoom-btn" id="zb" onclick="zoomOut()">전체 지도 ↩</button>
+<div class="zoom-hint" id="zh">지역을 탭하면 확대됩니다</div>
+</div>
+<button class="cb" id="cbn" onclick="rS()">✕ 출발지 선택 취소</button>
+<div class="lw" id="lw"><div class="lt">✏️ 우리 모둠이 그린 흐름</div><div id="cd"></div></div>
+<div class="sw" id="sw"><button class="bsub" id="finBtn" onclick="fin()">모둠 활동 완료 · 제출하기 →</button></div>
+</div>
+<div class="ds" id="ds"><div class="di">✅</div><div class="dt" id="dti">활동 완료!</div><div class="dd" id="dsu"></div><div class="dsm" id="dsm"></div><button class="brst" onclick="rst()">처음부터 다시</button></div></div>
+<script>
+
+function toggleOpt(){
+  var c = document.getElementById('optContent');
+  var a = document.getElementById('optArrow');
+  if (!c || !a) return;
+  var isOpen = c.style.display === 'block';
+  c.style.display = isOpen ? 'none' : 'block';
+  a.textContent  = isOpen ? '▼' : '▲';
+}
+
+
+// ── 협의안 ──────────────────────────────────────────────────
+
+function pickProb(radio) {
+  document.querySelectorAll('.prob-card').forEach(function(c){c.classList.remove('chosen');});
+  if(radio.closest('.prob-card')) radio.closest('.prob-card').classList.add('chosen');
+}
+function toggleAgent(btn){btn.classList.toggle('on');}
+function getAgents(){
+  return Array.from(document.querySelectorAll('.agent-btn.on')).map(function(b){return b.textContent;});
+}
+function submitPlan(){
+  var prob=document.querySelector('input[name="prob"]:checked');
+  if(!prob){alert('문제를 선택해 주세요.');return;}
+  var plan=document.getElementById('pf-plan').value.trim();
+  if(!plan){alert('③ 구체적 방안을 작성해 주세요.');return;}
+  var gn=document.getElementById('gn').value.trim()||'우리 모둠';
+  var data={
+    groupName:gn, timestamp:Date.now(),
+    problem:prob.value,
+    arrowRef:document.getElementById('pf-arrow').value.trim(),
+    cause:document.getElementById('pf-cause').value.trim(),
+    agents:getAgents(),
+    plan:plan,
+    limit:document.getElementById('pf-limit').value.trim(),
+    chatQ:document.getElementById('pf-q').value.trim()
+  };
+  var btn=document.getElementById('planSubmitBtn');
+  btn.textContent='제출 중…'; btn.disabled=true;
+  fetch(FB_URL+'/proposals.json',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
+  })
+  .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+  .then(function(){
+    document.getElementById('planDone').classList.add('show');
+    btn.style.display='none';
+  })
+  .catch(function(e){
+    btn.textContent='협의안 제출하기 →'; btn.disabled=false;
+    alert('제출 실패: '+e.message+'\n와이파이 연결을 확인하세요.');
+  });
+}
+
+var NODES={
+  juchon:{label:'주촌면',em:'🏭',cx:203.1,cy:260.4},
+  dongmi:{label:'동상동·회현동',em:'🏛️',cx:280.4,cy:263.8},
+  naewoi:{label:'내외동',em:'🏢',cx:250.0,cy:263.2},
+  jangyu:{label:'장유',em:'🏘️',cx:169.9,cy:330.8},
+  ext:{label:'부산·창원',em:'🏙️',cx:213,cy:400}
+};
+var CW_PT={x:78,y:400};
+var BU_PT={x:348,y:400};
+var YP=[1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];var YF=[1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];var YM=[1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];var DM=[25188,24700,24248,23515,23319,22315,21588,21350,21349,20345,19991,19387,18856,19766,19622,19476,18951,19267,19244,19261,18896,18748,18902,18661,20931,20981,20020,19284,18627,18007,17471,16924,16384];var NW=[32475,34061,39559,58758,68741,79629,83018,89087,90943,90428,90679,89393,89338,89634,88609,88433,87247,87667,87650,87478,85749,84644,83969,83104,80446,78252,75635,73919,73113,72774,71343,69448,67448];var JY=[null,null,12581,11897,11911,11698,11484,18006,20597,47199,55391,73614,84916,90279,96471,102731,117673,123150,126572,132108,140299,144577,144710,145629,149633,151740,160810,165079,166048,165846,167707,170001,177769];var JC=[null,null,5467,5436,5594,5609,5524,5354,5329,5155,5065,4818,4749,4632,4508,4346,4168,4181,4028,3814,3610,3479,3431,3343,3206,6681,16143,18209,18709,18986,19592,19815,19804];var FG=[328,600,1388,1922,2504,2034,2494,3453,3381,3644,5526,5644,5779,8197,10129,12453,12643,13968,16115,15470,16132,17732,18522,18432,18626,18688,19013,16904,16046,17911,21425,24727];var NC=[767,3874,2490,2224,-127,4626,1112,13542,3660,8427,6000,2374,3379,3251,3928,1452,1221,2483,4738,2778,1530,1554,2330,1041,3486,1227,-421,796,1762,1008,1899];var NB=[11644,12658,10024,10068,3978,7753,5808,14646,8560,6179,5019,4527,3379,4418,5761,3671,1460,1583,2796,1461,-136,129,1314,2007,5257,1071,-235,105,142,535,1348];
+// ── Firebase 설정 (교사가 수정) ─────────────────
+var FB_URL = 'https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com';
+
+// ── 상태 ────────────────────────────────────────
+var ss=null, ph='start', ar=[], an=0, pF, pT;
+var ZOOMED=false, chartsInit=false;
+var VFull='0 0 480 430', VZoom='45 169 329 284';
+
+// ── 탭 ──────────────────────────────────────────
+function showTab(id){
+  document.querySelectorAll('.tab-content').forEach(function(el){el.style.display='none';});
+  document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('on');});
+  document.getElementById('tab-'+id).style.display='block';
+  document.getElementById('tbtn-'+id).classList.add('on');
+  if(id==='data'&&!chartsInit){initCharts();chartsInit=true;}
+}
+
+// ── 차트 ────────────────────────────────────────
+function initCharts(){
+  var gc='rgba(0,0,0,.05)';
+  new Chart(document.getElementById('cPop').getContext('2d'),{
+    type:'line',
+    data:{labels:YP,datasets:[
+      {label:'장유',data:JY,borderColor:'#2a9a5c',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,tension:.3,fill:false,spanGaps:true},
+      {label:'내외동',data:NW,borderColor:'#3a6ea5',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,tension:.3,fill:false},
+      {label:'동상동+회현동',data:DM,borderColor:'#c0392b',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,tension:.3,fill:false,borderDash:[5,3]},
+      {label:'주촌면',data:JC,borderColor:'#d4820a',borderWidth:2.5,pointRadius:0,pointHoverRadius:5,tension:.3,fill:false,borderDash:[3,3],spanGaps:true},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11,weight:'bold'},boxWidth:14,padding:10}},
+        tooltip:{callbacks:{label:function(c){return' '+c.dataset.label+': '+(c.raw!==null?c.raw.toLocaleString()+'명':'-');}}}},
+      scales:{
+        x:{ticks:{maxTicksLimit:12,font:{size:11},callback:function(v,i){return parseInt(YP[i])%5===0?YP[i]+'년':'';}},grid:{color:gc}},
+        y:{ticks:{font:{size:11},callback:function(v){return v>=10000?(v/10000).toFixed(0)+'만':v.toLocaleString();}},grid:{color:gc}}}}
+  });
+  new Chart(document.getElementById('cMig').getContext('2d'),{
+    type:'bar',
+    data:{labels:YM,datasets:[
+      {label:'창원↔김해 순이동',data:NC,backgroundColor:NC.map(function(v){return v>=0?'rgba(42,154,92,.75)':'rgba(192,57,43,.75)';}),borderRadius:2,order:2},
+      {label:'부산↔김해 순이동',data:NB,backgroundColor:NB.map(function(v){return v>=0?'rgba(58,110,165,.65)':'rgba(192,57,43,.55)';}),borderRadius:2,order:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:11,weight:'bold'},boxWidth:14,padding:10}},
+        tooltip:{callbacks:{label:function(c){var s=c.raw>=0?'+':'';return' '+c.dataset.label+': '+s+c.raw.toLocaleString()+'명';}}}},
+      scales:{
+        x:{ticks:{maxTicksLimit:10,font:{size:11},callback:function(v,i){return parseInt(YM[i])%5===0?YM[i]+'년':'';}},grid:{color:gc}},
+        y:{ticks:{font:{size:11},callback:function(v){return v>=10000?(v/10000).toFixed(0)+'만':v.toLocaleString();}},
+          grid:{color:function(ctx){return ctx.tick.value===0?'rgba(0,0,0,.25)':gc;},
+                lineWidth:function(ctx){return ctx.tick.value===0?2:1;}}}}}
+  });
+  new Chart(document.getElementById('cFor').getContext('2d'),{
+    type:'bar',
+    data:{labels:YF,datasets:[{label:'등록외국인',data:FG,
+      backgroundColor:YF.map(function(y){
+        var yr=parseInt(y);
+        if(yr>=2023)return'rgba(212,130,10,.85)';
+        if(yr>=2018)return'rgba(58,110,165,.70)';
+        return'rgba(58,110,165,.40)';
+      }),borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:function(c){return' 등록외국인: '+c.raw.toLocaleString()+'명';}}}},
+      scales:{
+        x:{ticks:{maxTicksLimit:12,font:{size:11},callback:function(v,i){return parseInt(YF[i])%5===0?YF[i]+'년':'';}},grid:{color:gc}},
+        y:{ticks:{font:{size:11},callback:function(v){return v.toLocaleString();}},grid:{color:gc}}}}
+  });
+}
+
+// ── viewBox 애니메이션 ───────────────────────────
+function parseVB(s){var p=s.split(' ').map(Number);return{x:p[0],y:p[1],w:p[2],h:p[3]};}
+function applyVB(v){document.getElementById('ms').setAttribute('viewBox',v.x+' '+v.y+' '+v.w+' '+v.h);}
+function animVB(target,dur){
+  var svg=document.getElementById('ms');
+  var cur=parseVB(svg.getAttribute('viewBox')),tgt=parseVB(target),t0=null;
+  function step(ts){
+    if(!t0)t0=ts;
+    var p=Math.min((ts-t0)/dur,1),e=p<0.5?2*p*p:-1+(4-2*p)*p;
+    applyVB({x:cur.x+(tgt.x-cur.x)*e,y:cur.y+(tgt.y-cur.y)*e,
+             w:cur.w+(tgt.w-cur.w)*e,h:cur.h+(tgt.h-cur.h)*e});
+    if(p<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+function zoomIn(){
+  if(ZOOMED)return; ZOOMED=true; animVB(VZoom,600);
+  document.getElementById('zh').style.display='none';
+  document.getElementById('zb').classList.add('show');
+}
+function zoomOut(){
+  if(!ZOOMED)return; ZOOMED=false; animVB(VFull,500);
+  document.getElementById('zb').classList.remove('show');
+  document.getElementById('zh').style.display='';
+}
+
+// ── 노드 클릭 ────────────────────────────────────
+function hN(id){
+  if(!ZOOMED)zoomIn();
+  if(ph==='start'){
+    ss=id; ph='end'; selV(id,true);
+    document.getElementById('cbn').classList.add('show'); upS();
+  } else {
+    if(id===ss){rS();return;}
+    pF=ss; pT=id;
+    addRoute(pF,pT);
+    selV(ss,false);
+    document.getElementById('cbn').classList.remove('show');
+    ss=null; ph='start'; upS();
+  }
+}
+function rS(){
+  if(ss)selV(ss,false); ss=null; ph='start';
+  document.getElementById('cbn').classList.remove('show'); rmTmp(); upS();
+}
+function selV(id,on){
+  var e=document.getElementById('rp-'+id); if(e)e.classList.toggle('sel-on',on);
+  if(id==='ext'){
+    ['mk-cw','mk-bu'].forEach(function(x){var c=document.getElementById(x);if(c)c.classList.toggle('sel-on',on);});
+  }
+}
+function upS(){
+  var b=document.getElementById('sb');
+  b.className='step-bar'+(ph==='end'?' s2':'');
+  var m={
+    start:['① 출발지를 누르세요','지역 또는 창원·부산을 선택하세요'],
+    end:['② 도착지를 누르세요','흐름가 끝날 지역을 선택하세요'],
+  };
+  document.getElementById('sl').textContent=m[ph][0];
+  document.getElementById('sd').textContent=m[ph][1];
+}
+
+// ── 흐름 ──────────────────────────────────────
+function npt(id){return{x:NODES[id].cx,y:NODES[id].cy};}
+function dArr(id,f,t,off,tmp,overrideP1){
+  var L=document.getElementById('al');
+  var p1=overrideP1||npt(f),p2=npt(t);
+  var col=tmp?'#3a4a60':'#1b2a4a',mk=tmp?'mk-tmp':'mk-arrow';
+  var dx=p2.x-p1.x,dy=p2.y-p1.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+  var cv=(off||0)*28,mx=(p1.x+p2.x)/2-(dy/len)*cv,my=(p1.y+p2.y)/2+(dx/len)*cv;
+  var trim=Math.min(30,len*0.35),ex=p2.x-(dx/len)*trim,ey=p2.y-(dy/len)*trim;
+  var g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.id='arrow-'+id;
+  var pa=document.createElementNS('http://www.w3.org/2000/svg','path');
+  pa.setAttribute('d','M '+p1.x+' '+p1.y+' Q '+mx+' '+my+' '+ex+' '+ey);
+  pa.setAttribute('fill','none'); pa.setAttribute('stroke',col);
+  pa.setAttribute('stroke-width',tmp?'3':'5.5');
+  pa.setAttribute('marker-end','url(#'+mk+')');
+  pa.setAttribute('opacity',tmp?'.45':'.92');
+  g.appendChild(pa);
+  if(!tmp){
+    var tx=document.createElementNS('http://www.w3.org/2000/svg','text');
+    tx.setAttribute('x',mx); tx.setAttribute('y',my-10);
+    tx.setAttribute('text-anchor','middle'); tx.setAttribute('font-size','13');
+    tx.setAttribute('font-weight','800'); tx.setAttribute('fill','#1b2a4a');
+    tx.setAttribute('pointer-events','none');
+    tx.textContent=NODES[f].em+'→'+NODES[t].em;
+    g.appendChild(tx);
+  }
+  L.appendChild(g);
+}
+function dTmp(f,t){
+  rmTmp();
+  if(f==='ext'){
+    dArr('_tmp_cw',f,t,0,true,{x:CW_PT.x,y:CW_PT.y});
+    dArr('_tmp_bu',f,t,1,true,{x:BU_PT.x,y:BU_PT.y});
+  } else {
+    dArr('_tmp',f,t,0,true);
+  }
+}
+function rmTmp(){
+  ['_tmp','_tmp_cw','_tmp_bu'].forEach(function(id){
+    var e=document.getElementById('arrow-'+id); if(e)e.remove();
+  });
+}
+function addRoute(f,t){
+  an++;
+  var id='a'+an;
+  var sm=ar.filter(function(a){return(a.f===f&&a.t===t)||(a.f===t&&a.t===f);}).length;
+  var a={id:id,f:f,t:t,q1:'',q2:'',off:sm};
+  ar.push(a);
+  if(f==='ext'){
+    dArr(id+'_cw',f,t,sm,  false,{x:CW_PT.x,y:CW_PT.y});
+    dArr(id+'_bu',f,t,sm+1,false,{x:BU_PT.x,   y:BU_PT.y});
+  } else {
+    dArr(id,f,t,sm,false);
+  }
+  addCard(a);
+  document.getElementById('lw').style.display='block';
+  document.getElementById('sw').style.display='block';
+  setTimeout(function(){
+    var card=document.getElementById('card-'+id);
+    if(card)card.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+}
+function addCard(a){
+  var fn=NODES[a.f],tn=NODES[a.t];
+  var wrap=document.createElement('div');
+  wrap.className='ac'; wrap.id='card-'+a.id;
+  var head=document.createElement('div'); head.className='ah';
+  head.appendChild(document.createTextNode(fn.label+' → '+tn.label));
+  var btn=document.createElement('button'); btn.className='adel'; btn.textContent='✕ 삭제';
+  (function(aid){btn.addEventListener('click',function(){dA(aid);});})(a.id);
+  head.appendChild(btn);
+  var body=document.createElement('div'); body.className='ab';
+
+  var r1=document.createElement('div'); r1.className='rq';
+  var l1=document.createElement('label');
+  l1.innerHTML='① 어떤 데이터가 이 흐름을 뒷받침하나요? <span class="opt">(필수 · 데이터 탭 참고)</span>';
+  var i1=document.createElement('input'); i1.type='text';
+  i1.placeholder='예: 2001년 내외동 정점 → 2002년 장유 인구 폭발';
+  i1.value=a.q1;
+  i1.addEventListener('input',function(){
+    var r=ar.find(function(x){return x.id===a.id;}); if(r)r.q1=i1.value;
+  });
+  r1.appendChild(l1); r1.appendChild(i1);
+
+  var r2=document.createElement('div'); r2.className='rq';
+  var l2=document.createElement('label');
+  l2.innerHTML='② 이 흐름이 계속되면, 두 지역은 앞으로 어떻게 달라질까요? <span class="opt">(선택)</span>';
+  var i2=document.createElement('textarea');
+  i2.placeholder='예: 사람들이 빠져나가는 곳은…, 사람들이 모이는 곳은…';
+  i2.value=a.q2;
+  i2.addEventListener('input',function(){
+    var r=ar.find(function(x){return x.id===a.id;}); if(r)r.q2=i2.value;
+  });
+  r2.appendChild(l2); r2.appendChild(i2);
+
+  body.appendChild(r1); body.appendChild(r2);
+  wrap.appendChild(head); wrap.appendChild(body);
+  document.getElementById('cd').appendChild(wrap);
+}
+function dA(id){
+  [id,id+'_cw',id+'_bu'].forEach(function(aid){
+    var e=document.getElementById('arrow-'+aid); if(e)e.remove();
+  });
+  var c=document.getElementById('card-'+id); if(c)c.remove();
+  ar=ar.filter(function(a){return a.id!==id;});
+  if(!ar.length){
+    document.getElementById('lw').style.display='none';
+    document.getElementById('sw').style.display='none';
+  }
+}
+
+// ── Firebase 제출 ────────────────────────────────
+function fin(){
+  if(!ar.length){alert('흐름를 최소 1개 이상 완성해 주세요.'); return;}
+  var missing=ar.find(function(a){return !a.q1 || !a.q1.trim();});
+  if(missing){
+    var mf=NODES[missing.f],mt=NODES[missing.t];
+    alert('"'+mf.label+' → '+mt.label+'" 경로에 ① 근거를 작성해 주세요.');
+    var card=document.getElementById('card-'+missing.id);
+    if(card)card.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  var gn=document.getElementById('gn').value.trim();
+  if(!gn){alert('모둠 이름을 입력해 주세요.'); return;}
+  var data={
+    groupName:gn,
+    timestamp:Date.now(),
+    count:ar.length,
+    arrows:ar.map(function(a){
+      return{from:a.f,to:a.t,
+             fromLabel:NODES[a.f].label,toLabel:NODES[a.t].label,
+             q1:a.q1.trim(),q2:(a.q2||'').trim()};
+    })
+  };
+  var btn=document.getElementById('finBtn');
+  btn.textContent='제출 중…'; btn.disabled=true;
+  fetch(FB_URL+'/submissions.json',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  })
+  .then(function(r){
+    if(!r.ok)throw new Error('서버 오류 '+r.status);
+    return r.json();
+  })
+  .then(function(){
+    showDone(gn,data.arrows);
+  })
+  .catch(function(e){
+    btn.textContent='모둠 활동 완료 →'; btn.disabled=false;
+    alert('제출 실패: '+e.message+'\n와이파이 연결을 확인하고 다시 눌러주세요.');
+  });
+}
+function showDone(gn,arrows){
+  document.getElementById('mw').style.display='none';
+  document.getElementById('dti').textContent=gn+' 활동 완료!';
+  document.getElementById('dsu').textContent='총 '+arrows.length+'개 루트 분석 · 교사 대시보드에 제출됨 ✅';
+  var s='';
+  arrows.forEach(function(a,i){
+    s+='<b>'+(i+1)+'. '+a.fromLabel+' → '+a.toLabel+'</b><br>';
+    s+='근거: '+a.q1+'<br>'+(a.q2?'영향: '+a.q2+'<br>':'')+'<br>';
+  });
+  document.getElementById('dsm').innerHTML=s;
+  var ds=document.getElementById('ds'); ds.classList.add('show'); ds.style.display='block';
+  window.scrollTo(0,0);
+}
+function rst(){
+  ar=[];an=0;ss=null;ph='start';ZOOMED=false;
+  document.getElementById('al').innerHTML='';
+  document.getElementById('cd').innerHTML='';
+  ['lw','sw'].forEach(function(x){document.getElementById(x).style.display='none';});
+  document.getElementById('ds').classList.remove('show');
+  document.getElementById('ds').style.display='none';
+  document.getElementById('mw').style.display='block';
+  document.getElementById('gn').value='';
+  document.querySelectorAll('.sel-on').forEach(function(e){e.classList.remove('sel-on');});
+  document.getElementById('cbn').classList.remove('show');
+  document.getElementById('zb').classList.remove('show');
+  document.getElementById('zh').style.display='';
+  var finBtn=document.getElementById('finBtn');
+  finBtn.textContent='모둠 활동 완료 →'; finBtn.disabled=false;
+  applyVB(parseVB(VFull));
+  upS(); window.scrollTo(0,0);
+}
+showTab("reading");
+</script>
+</body>
+</html>
