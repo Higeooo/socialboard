@@ -103,27 +103,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans
     color:var(--red);border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;}
 .cb.show{display:block;}
 .sel-on{stroke-width:5!important;filter:drop-shadow(0 0 7px currentColor);}
-.rq{margin-bottom:11px;} .rq label{font-size:12.5px;font-weight:700;display:block;margin-bottom:5px;}
+.rq{margin-bottom:11px;} .rq label{font-size:12.5px;font-weight:700;display:block;margin-bottom:5px;
+  font-family:'Noto Serif KR',serif;}
 .opt{font-size:11px;color:var(--ink-faint);font-weight:400;}
 .rq input,.rq textarea{width:100%;padding:9px 12px;border:2px solid var(--line);border-radius:9px;
-  font-size:13.5px;font-family:inherit;color:var(--ink);}
-.rq input:focus,.rq textarea:focus{outline:none;border-color:var(--accent);}
+  font-size:13.5px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;color:var(--ink);}
+.rq input:focus,.rq textarea:focus{outline:none;border-color:var(--ink);}
 .rq textarea{resize:vertical;min-height:60px;}
-.lw{margin-bottom:10px;display:none;} .lt{font-size:13px;font-weight:800;margin-bottom:7px;padding-left:3px;}
+.lw{margin-bottom:10px;display:none;} .lt{font-size:14px;font-weight:700;margin-bottom:8px;padding-left:3px;
+  font-family:'Noto Serif KR',serif;}
 .ac{background:var(--surface);border-radius:12px;padding:12px 13px;box-shadow:0 2px 8px rgba(27,42,74,.08);
     margin-bottom:7px;border:1px solid var(--line);}
-.ac.ac-writing{border:1.5px solid var(--accent);}
-.ah{font-size:13px;font-weight:800;margin-bottom:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ac.ac-writing{border:1.5px solid var(--ink);}
+.ah{font-size:13px;font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  font-family:'Noto Serif KR',serif;}
 .ac-num{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--bg-soft);
-  padding:2px 9px;border-radius:20px;}
-.ac-status{font-size:11px;font-weight:700;color:#fff;background:var(--accent);
-  padding:2px 9px;border-radius:20px;display:none;}
+  padding:2px 9px;border-radius:20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;}
+.ac-status{font-size:11px;font-weight:700;color:#fff;background:var(--ink);
+  padding:2px 9px;border-radius:20px;display:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;}
 .ac-writing .ac-status{display:inline-block;}
 .adel{margin-left:auto;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:700;}
 .ab{font-size:12.5px;color:var(--ink-soft);line-height:1.65;} .ak{font-weight:700;color:var(--ink);}
 .sw{display:none;margin-top:4px;}
 .bsub{width:100%;padding:15px;background:var(--ink);color:#fff;border:none;border-radius:12px;
-      font-size:16px;font-weight:800;cursor:pointer;}
+      font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Serif KR',serif;letter-spacing:.02em;}
 .bsub:disabled{opacity:.6;cursor:wait;}
 .ds{display:none;background:var(--surface);border-radius:16px;padding:28px 20px;
     box-shadow:0 4px 18px rgba(27,42,74,.10);text-align:center;}
@@ -341,7 +344,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans
 
   </div>
 </div>
-<div class="tab-content" id="tab-arrow"><div id="mw"><div class="hd"><h1>🗺️ 김해의 인구 흐름 그리기</h1><p>읽기자료와 데이터를 근거로 지역 간 인구 흐름을 흐름로 표현해봅시다</p></div>
+<div class="tab-content" id="tab-arrow"><div id="mw"><div class="hd"><h1>🗺️ 김해의 산업화·도시화 흐름 그리기</h1><p>읽기자료와 데이터를 근거로 지역 간 인구 흐름을 흐름로 표현해봅시다</p></div>
 <div class="gr"><input id="gn" type="text" placeholder="모둠 이름 입력 (예: 1모둠)"/></div>
 <div class="guide"><b>활동 방법</b> — 출발지를 탭 → 도착지를 탭 → 근거 작성 → 흐름 시각화 제출<br>읽기자료·데이터를 근거로 <b>2개 이상</b>의 이동 루트를 표현해 보세요.</div>
 <div class="step-bar" id="sb">
