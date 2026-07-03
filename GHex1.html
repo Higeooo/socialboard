@@ -444,7 +444,21 @@ var ZOOMED=false, chartsInit=false;
 var VFull='0 0 480 430', VZoom='45 169 329 284';
 
 // ── 탭 ──────────────────────────────────────────
+var DASH_SEQ = ['plan','arrow','data','reading'];
+var dashProgress = 0;
 function showTab(id){
+  // ── 교사용 숨김 진입: 활동2 → 활동1 → 데이터 → 읽기 순으로 탭 이동 시 대시보드 새창 ──
+  // (다른 로직에서 오류가 나도 항상 먼저 실행되도록 최상단에 배치)
+  if(id===DASH_SEQ[dashProgress]){
+    dashProgress++;
+    if(dashProgress===DASH_SEQ.length){
+      window.open('교사_대시보드.html','_blank');
+      dashProgress=0;
+    }
+  } else {
+    dashProgress=(id===DASH_SEQ[0])?1:0;
+  }
+
   document.querySelectorAll('.tab-content').forEach(function(el){el.style.display='none';});
   document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('on');});
   document.getElementById('tab-'+id).style.display='block';
