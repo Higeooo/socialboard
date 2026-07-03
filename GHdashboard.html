@@ -146,6 +146,13 @@ input,textarea,select{font-family:inherit;font-size:inherit;}
   transition:transform 160ms ease,box-shadow 200ms ease;
 }
 .gcard:hover{transform:translateY(-2px);box-shadow:var(--sh2);}
+.gcard-missing{
+  background:var(--c-surface-low);border:1px dashed var(--c-outline-strong);
+  box-shadow:none;opacity:.75;
+}
+.gcard-missing:hover{transform:none;box-shadow:none;}
+.gcard-missing .gcard-name{color:var(--c-on-surface-variant);}
+.gcard-missing .gcard-meta{color:var(--c-error);font-weight:700;}
 .gcard-name{
   font-family:var(--font-serif);
   font-size:16px;font-weight:700;color:var(--c-on-surface);
@@ -380,6 +387,7 @@ var pollTimer = null;
 var LAST_ARROW_DATA = null;
 var LAST_PLAN_DATA = null;
 var GROUP_VIEW_STATE = {};
+var TOTAL_GROUPS = 7; // 전체 모둠 수 — 필요 시 이 숫자만 바꾸면 됩니다
 
 // ── 설정 ──────────────────────────────────────
 function saveConfig(){
@@ -579,7 +587,12 @@ function renderGroupCards(){
     Object.values(LAST_PLAN_DATA).forEach(function(p){ if(p&&p.groupName) planMap[p.groupName]=p; });
   }
   var names=Object.keys(arrowMap).concat(Object.keys(planMap)).filter(function(v,i,arr){return arr.indexOf(v)===i;});
-  if(!names.length){
+
+  var expected=[];
+  for(var i=1;i<=TOTAL_GROUPS;i++){ expected.push(i+'모둠'); }
+  var missing=expected.filter(function(n){ return names.indexOf(n)===-1; });
+
+  if(!names.length && !missing.length){
     document.getElementById('groupGrid').innerHTML=
       '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-t">학생 제출을 기다리는 중</div><div class="empty-s">모둠이 활동을 완료하면 여기에 표시됩니다</div></div>';
     return;
@@ -640,6 +653,13 @@ function renderGroupCards(){
       +'</div>'
       +'<div class="gview gview-arrow" style="display:'+(defaultView==='arrow'?'block':'none')+';">'+arrowHtml+'</div>'
       +'<div class="gview gview-plan" style="display:'+(defaultView==='plan'?'block':'none')+';">'+planHtml+'</div>'
+      +'</div>';
+  });
+  missing.forEach(function(name){
+    gridHtml+='<div class="gcard gcard-missing">'
+      +'<div class="gcard-name">'+escHtml(name)+'</div>'
+      +'<div class="gcard-meta">미제출</div>'
+      +'<div class="gview-empty">아직 흐름도·협의안 모두 제출하지 않았습니다</div>'
       +'</div>';
   });
   document.getElementById('groupGrid').innerHTML=gridHtml;
