@@ -97,6 +97,7 @@ img { max-width: 100%; display: block; }
   backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--c-outline);
 }
+.topbar[hidden] { display: none; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-mark { color: var(--c-primary-accent); font-size: 22px; line-height: 1; }
 .brand-name { font-weight: 800; letter-spacing: 0.02em; font-size: 15px; }
@@ -129,6 +130,7 @@ img { max-width: 100%; display: block; }
 
 /* ---------- Field ---------- */
 .field { display: block; margin-bottom: 16px; }
+.field[hidden] { display: none; }
 .field > span {
   display: block; font-size: 13px; font-weight: 600;
   color: var(--c-on-surface-variant); margin-bottom: 6px;
@@ -161,6 +163,7 @@ textarea { resize: vertical; line-height: 1.55; }
   transition: transform 120ms ease, box-shadow 200ms ease, background 120ms ease;
   white-space: nowrap;
 }
+.btn-primary[hidden], .btn-secondary[hidden], .btn-ghost[hidden], .btn-back[hidden] { display: none; }
 .btn-primary {
   background: var(--c-primary-accent);
   color: #1f3300;
@@ -222,11 +225,26 @@ textarea { resize: vertical; line-height: 1.55; }
 
 /* ---------- Page head ---------- */
 .page-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px 20px; margin-bottom: 28px; flex-wrap: wrap;
 }
-.page-head .h2 { font-size: 28px; }
-.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* 제목 영역: 활동명이 길어도 자기 영역 안에서 줄바꿈되며,
+   버튼 영역(head-actions)을 밀어내지 않도록 함 */
+.page-head-title,
+.page-head > div:not(.head-actions) {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.page-head .h2 {
+  font-size: 28px;
+  overflow-wrap: break-word;
+  word-break: keep-all; /* 한글 단어 단위로 줄바꿈 */
+}
+.head-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
 
 /* ---------- Class grid ---------- */
 .grid-classes {
@@ -301,6 +319,7 @@ textarea { resize: vertical; line-height: 1.55; }
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
+.free-area[hidden] { display: none; }
 .free-empty {
   grid-column: 1 / -1;
   padding: 60px 24px; text-align: center;
@@ -320,6 +339,7 @@ textarea { resize: vertical; line-height: 1.55; }
   scrollbar-width: thin;
   scrollbar-color: var(--c-outline) transparent;
 }
+.columns-area[hidden] { display: none; }
 .columns-area::-webkit-scrollbar { height: 10px; }
 .columns-area::-webkit-scrollbar-track { background: transparent; }
 .columns-area::-webkit-scrollbar-thumb {
@@ -555,6 +575,7 @@ textarea { resize: vertical; line-height: 1.55; }
 
 /* ---------- Inquiry steps ---------- */
 .inquiry-stack { display: flex; flex-direction: column; gap: 12px; }
+.inquiry-stack[hidden] { display: none; } /* hidden 속성이 display:flex보다 항상 우선하도록 보정 */
 .step-card {
   display: grid; grid-template-columns: 32px 1fr; gap: 12px;
   padding: 16px;
