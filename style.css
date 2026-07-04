@@ -309,28 +309,11 @@ textarea { resize: vertical; line-height: 1.55; }
 .activity-card .a-desc { font-size: 13px; color: var(--c-on-surface-variant); }
 .activity-card .a-actions { margin-left: auto; display: flex; gap: 8px; }
 
-/* ---------- 게시판 내 자료/링크 영역 (게시물 위쪽에 표시) ---------- */
+/* ---------- 게시판 내 자료/링크 영역 (반게시판 활동 카드와 동일한 스타일 재사용) ---------- */
 .board-links {
-  display: flex; flex-wrap: wrap; gap: 10px;
-  padding: 0 24px 20px;
+  padding-top: 4px; margin-bottom: 24px;
 }
 .board-links[hidden] { display: none; }
-.board-link-card {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 16px;
-  background: var(--c-surface-low);
-  border: 1px solid var(--c-outline);
-  border-radius: var(--r-pill);
-}
-.board-link-card a {
-  color: var(--c-on-surface); font-weight: 600; font-size: 14px;
-  text-decoration: none;
-}
-.board-link-card a:hover { text-decoration: underline; }
-.board-link-card .icon-btn {
-  width: 22px; height: 22px; font-size: 12px;
-  color: var(--c-on-surface-variant);
-}
 
 /* ---------- Board screen wrapper ---------- */
 .board-screen { padding-bottom: 40px; }
