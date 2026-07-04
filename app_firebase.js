@@ -212,6 +212,7 @@ async function api(action, payload = {}) {
     case 'activity.delete':      return fbActivityDelete(payload);
     case 'boardlink.list':       return fbBoardLinkList(payload);
     case 'boardlink.create':     return fbBoardLinkCreate(payload);
+    case 'boardlink.update':     return fbBoardLinkUpdate(payload);
     case 'boardlink.delete':     return fbBoardLinkDelete(payload);
     case 'activity.get':         return fbActivityGet(payload);
     case 'group.list':           return fbGroupList(payload);
@@ -430,6 +431,11 @@ async function fbBoardLinkCreate({ semester, activityId, title, url, token }) {
     activityId, title, url, createdAt: new Date().toISOString()
   });
   return { linkId: id };
+}
+async function fbBoardLinkUpdate({ semester, linkId, title, url, token }) {
+  verifyAdmin(token);
+  await fbPatch('/' + semester + '/boardLinks/' + linkId, { title, url });
+  return { ok: true };
 }
 async function fbBoardLinkDelete({ semester, linkId, token }) {
   verifyAdmin(token);
@@ -1184,16 +1190,37 @@ async function refreshBoard() {
   }
 }
 
-// ── 게시판 상단 자료/링크 영역 ──────────────────────────────
+// ── 게시판 상단 자료/링크 영역 (반게시판 활동 카드와 동일한 스타일) ──
+let boardLinkEditId = null;
+
 function renderBoardLinks(links) {
   const root = $('#board-links');
   if (!links || !links.length) { root.hidden = true; root.innerHTML = ''; return; }
   root.hidden = false;
   root.innerHTML = links.map(l => `
-    <div class="board-link-card" data-id="${l.linkId}">
-      <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">🔗 ${escapeHtml(l.title)}</a>
-      ${isAdmin() ? `<button class="icon-btn" data-action="del-boardlink" data-id="${l.linkId}" title="삭제">✕</button>` : ''}
+    <div class="activity-card" data-id="${l.linkId}" data-url="${escapeHtml(l.url)}">
+      <div class="activity-icon link">🔗</div>
+      <div><div class="a-title">${escapeHtml(l.title)}</div>
+        <div class="a-desc">외부 링크 활동</div>
+      </div>
+      <div class="a-actions">
+        ${isAdmin() ? `<button class="btn-ghost" data-action="edit-boardlink" data-id="${l.linkId}">수정</button>
+        <button class="btn-ghost" data-action="del-boardlink" data-id="${l.linkId}">삭제</button>` : ''}
+        <button class="btn-primary" data-action="open-boardlink">열기 →</button>
+      </div>
     </div>`).join('');
+
+  root.querySelectorAll('.activity-card').forEach(card => {
+    card.querySelector('[data-action="open-boardlink"]').addEventListener('click', () => {
+      window.open(card.dataset.url, '_blank', 'noopener');
+    });
+  });
+  root.querySelectorAll('[data-action="edit-boardlink"]').forEach(b => {
+    b.addEventListener('click', () => {
+      const l = links.find(x => x.linkId === b.dataset.id);
+      if (l) openBoardLinkModal(l);
+    });
+  });
   root.querySelectorAll('[data-action="del-boardlink"]').forEach(b => {
     b.addEventListener('click', async () => {
       if (!confirm('이 자료를 삭제할까요?')) return;
@@ -1205,9 +1232,12 @@ function renderBoardLinks(links) {
   });
 }
 
-function openBoardLinkModal() {
-  $('#boardlink-title').value = '';
-  $('#boardlink-url').value = '';
+function openBoardLinkModal(editData = null) {
+  boardLinkEditId = editData ? editData.linkId : null;
+  $('#modal-board-link-title').textContent = editData ? '자료 링크 수정' : '자료 링크 추가';
+  $('#boardlink-title').value = editData ? (editData.title || '') : '';
+  $('#boardlink-url').value = editData ? (editData.url || '') : '';
+  $('#btn-submit-boardlink').textContent = editData ? '저장' : '추가';
   $('#modal-board-link').hidden = false;
   $('#boardlink-title').focus();
 }
@@ -1218,8 +1248,13 @@ async function submitBoardLink() {
   if (!title) return toast('자료명을 입력하세요.', 'error');
   if (!url) return toast('링크 URL을 입력하세요.', 'error');
   try {
-    await api('boardlink.create', { semester: state.semester, activityId: state.cur.activityId, title, url, token: state.adminToken });
-    toast('자료를 추가했습니다.', 'success');
+    if (boardLinkEditId) {
+      await api('boardlink.update', { semester: state.semester, linkId: boardLinkEditId, title, url, token: state.adminToken });
+      toast('자료를 수정했습니다.', 'success');
+    } else {
+      await api('boardlink.create', { semester: state.semester, activityId: state.cur.activityId, title, url, token: state.adminToken });
+      toast('자료를 추가했습니다.', 'success');
+    }
     $('#modal-board-link').hidden = true;
     refreshBoard();
   } catch(e) { toast(e.message, 'error'); }
