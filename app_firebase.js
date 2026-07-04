@@ -210,6 +210,9 @@ async function api(action, payload = {}) {
     case 'activity.create':      return fbActivityCreate(payload);
     case 'activity.update':      return fbActivityUpdate(payload);
     case 'activity.delete':      return fbActivityDelete(payload);
+    case 'boardlink.list':       return fbBoardLinkList(payload);
+    case 'boardlink.create':     return fbBoardLinkCreate(payload);
+    case 'boardlink.delete':     return fbBoardLinkDelete(payload);
     case 'activity.get':         return fbActivityGet(payload);
     case 'group.list':           return fbGroupList(payload);
     case 'group.makeColumns':    return fbMakeColumns(payload);
@@ -408,7 +411,30 @@ async function _deleteActivity(semester, activityId) {
   const posts = objToArr(await fbGet('/' + semester + '/posts'))
     .filter(p => p.activityId === activityId);
   for (const p of posts) await fbDelete('/' + semester + '/posts/' + p._id);
+  const links = objToArr(await fbGet('/' + semester + '/boardLinks'))
+    .filter(l => l.activityId === activityId);
+  for (const l of links) await fbDelete('/' + semester + '/boardLinks/' + l._id);
   await fbDelete('/' + semester + '/activities/' + activityId);
+}
+
+// ── 게시판 내 자료/링크 (특정 활동 게시판 상단에 표시되는 하위 참고자료) ──
+async function fbBoardLinkList({ semester, activityId }) {
+  const raw = await fbGet('/' + semester + '/boardLinks');
+  return objToArr(raw).filter(l => l.activityId === activityId)
+    .map(l => ({ linkId: l._id, activityId: l.activityId, title: l.title, url: l.url }))
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+}
+async function fbBoardLinkCreate({ semester, activityId, title, url, token }) {
+  verifyAdmin(token);
+  const id = await fbPush('/' + semester + '/boardLinks', {
+    activityId, title, url, createdAt: new Date().toISOString()
+  });
+  return { linkId: id };
+}
+async function fbBoardLinkDelete({ semester, linkId, token }) {
+  verifyAdmin(token);
+  await fbDelete('/' + semester + '/boardLinks/' + linkId);
+  return { ok: true };
 }
 
 // 반 게시물 일괄 삭제
@@ -1138,14 +1164,16 @@ async function refreshBoard() {
     state.cur.columnsCreated = !!(a.columnsCreated === true || a.columnsCreated === 'true' || a.columnsCreated === 'TRUE');
   } catch {}
   if (state.cur.activityId !== reqActivityId) return;
-  $('#btn-new-activity-inboard').hidden = !isAdmin();
+  $('#btn-add-boardlink').hidden = !isAdmin();
   $('#btn-make-columns').hidden = !(isAdmin() && !state.cur.columnsCreated);
   $('#btn-export').hidden = !isAdmin();
-  const [groups, posts] = await Promise.all([
+  const [groups, posts, links] = await Promise.all([
     api('group.list', { semester: state.semester, activityId: reqActivityId }),
-    api('post.list',  { semester: state.semester, activityId: reqActivityId, includeHidden: isAdmin() })
+    api('post.list',  { semester: state.semester, activityId: reqActivityId, includeHidden: isAdmin() }),
+    api('boardlink.list', { semester: state.semester, activityId: reqActivityId })
   ]);
   if (state.cur.activityId !== reqActivityId) return; // 응답 도착 시점에 이미 다른 활동을 보고 있다면 무시
+  renderBoardLinks(links);
   state.cur.groups = groups;
   if (state.cur.columnsCreated && groups.length > 0) {
     renderColumns(groups, posts);
@@ -1154,6 +1182,47 @@ async function refreshBoard() {
     renderFreePosts(posts);
     $('#columns-area').hidden = true; $('#free-area').hidden = false;
   }
+}
+
+// ── 게시판 상단 자료/링크 영역 ──────────────────────────────
+function renderBoardLinks(links) {
+  const root = $('#board-links');
+  if (!links || !links.length) { root.hidden = true; root.innerHTML = ''; return; }
+  root.hidden = false;
+  root.innerHTML = links.map(l => `
+    <div class="board-link-card" data-id="${l.linkId}">
+      <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">🔗 ${escapeHtml(l.title)}</a>
+      ${isAdmin() ? `<button class="icon-btn" data-action="del-boardlink" data-id="${l.linkId}" title="삭제">✕</button>` : ''}
+    </div>`).join('');
+  root.querySelectorAll('[data-action="del-boardlink"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('이 자료를 삭제할까요?')) return;
+      try {
+        await api('boardlink.delete', { semester: state.semester, linkId: b.dataset.id, token: state.adminToken });
+        refreshBoard();
+      } catch(e) { toast(e.message, 'error'); }
+    });
+  });
+}
+
+function openBoardLinkModal() {
+  $('#boardlink-title').value = '';
+  $('#boardlink-url').value = '';
+  $('#modal-board-link').hidden = false;
+  $('#boardlink-title').focus();
+}
+
+async function submitBoardLink() {
+  const title = $('#boardlink-title').value.trim();
+  const url = $('#boardlink-url').value.trim();
+  if (!title) return toast('자료명을 입력하세요.', 'error');
+  if (!url) return toast('링크 URL을 입력하세요.', 'error');
+  try {
+    await api('boardlink.create', { semester: state.semester, activityId: state.cur.activityId, title, url, token: state.adminToken });
+    toast('자료를 추가했습니다.', 'success');
+    $('#modal-board-link').hidden = true;
+    refreshBoard();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 function renderFreePosts(posts) {
@@ -1596,7 +1665,8 @@ function bindOnce() {
   $('#activity-kind').addEventListener('change', toggleActivityKindFields);
   $('#btn-submit-activity').addEventListener('click', submitActivity);
   $('#btn-clear-posts').addEventListener('click', clearPostsByClass);
-  $('#btn-new-activity-inboard').addEventListener('click', () => openActivityModal());
+  $('#btn-add-boardlink').addEventListener('click', openBoardLinkModal);
+  $('#btn-submit-boardlink').addEventListener('click', submitBoardLink);
   $('#btn-make-columns').addEventListener('click', makeColumns);
   $('#btn-export').addEventListener('click', exportCsv);
 
