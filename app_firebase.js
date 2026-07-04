@@ -1138,6 +1138,7 @@ async function refreshBoard() {
     state.cur.columnsCreated = !!(a.columnsCreated === true || a.columnsCreated === 'true' || a.columnsCreated === 'TRUE');
   } catch {}
   if (state.cur.activityId !== reqActivityId) return;
+  $('#btn-new-activity-inboard').hidden = !isAdmin();
   $('#btn-make-columns').hidden = !(isAdmin() && !state.cur.columnsCreated);
   $('#btn-export').hidden = !isAdmin();
   const [groups, posts] = await Promise.all([
@@ -1595,6 +1596,7 @@ function bindOnce() {
   $('#activity-kind').addEventListener('change', toggleActivityKindFields);
   $('#btn-submit-activity').addEventListener('click', submitActivity);
   $('#btn-clear-posts').addEventListener('click', clearPostsByClass);
+  $('#btn-new-activity-inboard').addEventListener('click', () => openActivityModal());
   $('#btn-make-columns').addEventListener('click', makeColumns);
   $('#btn-export').addEventListener('click', exportCsv);
 
