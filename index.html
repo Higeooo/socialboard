@@ -171,12 +171,13 @@
         <p class="muted" id="cur-activity-sub"></p>
       </div>
       <div class="head-actions">
-        <button id="btn-new-activity-inboard" class="btn-ghost" hidden>+ 활동 만들기</button>
+        <button id="btn-add-boardlink" class="btn-ghost" hidden>+ 자료 링크 추가</button>
         <button id="btn-make-columns" class="btn-secondary" hidden>+ 8개 조 컬럼 만들기</button>
         <button id="btn-new-post" class="btn-primary">+ 게시물 작성</button>
         <button id="btn-export" class="btn-ghost" hidden>⇩ CSV</button>
       </div>
     </header>
+    <section id="board-links" class="board-links" hidden></section>
     <section id="free-area" class="container free-area" hidden></section>
     <section id="columns-area" class="columns-area" hidden></section>
   </main>
@@ -302,6 +303,28 @@
       <footer class="modal-foot">
         <button class="btn-ghost" data-close="modal-post">취소</button>
         <button id="btn-submit-post" class="btn-primary">게시하기</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================== 게시판 내 자료/링크 추가 모달 ======================== -->
+  <div id="modal-board-link" class="modal" hidden>
+    <div class="modal-card narrow">
+      <header class="modal-head">
+        <h3>자료 링크 추가</h3>
+        <button class="icon-btn" data-close="modal-board-link">✕</button>
+      </header>
+      <div class="modal-body">
+        <label class="field"><span>자료명</span>
+          <input type="text" id="boardlink-title" placeholder="예: 참고 영상, 통계자료 사이트" />
+        </label>
+        <label class="field"><span>링크 URL</span>
+          <input type="url" id="boardlink-url" placeholder="https://..." />
+        </label>
+      </div>
+      <footer class="modal-foot">
+        <button class="btn-ghost" data-close="modal-board-link">취소</button>
+        <button id="btn-submit-boardlink" class="btn-primary">추가</button>
       </footer>
     </div>
   </div>
