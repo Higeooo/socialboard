@@ -15,7 +15,7 @@ const FB_STORAGE = 'yulha-2026-1.appspot.com'; // ⚠ 더 이상 사용하지 �
 
 // 강의노트 첨부파일 업로드용 Google Apps Script 웹앱 주소
 // (Apps Script 배포 후 발급되는 /exec 로 끝나는 URL을 여기에 붙여넣으세요)
-const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzRydoKELBIKmT4Dtf8BqXv2ZRzVZ_vwp1rMsAgMHAobiNOFnpY56PHw5Oe0HSGivg/exec';
+const GAS_UPLOAD_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Code.gs의 UPLOAD_KEY 값과 반드시 동일하게 맞춰주세요
 const GAS_UPLOAD_KEY = 'yulha-note-upload-2026';
 
@@ -208,6 +208,7 @@ async function api(action, payload = {}) {
     case 'class.delete':         return fbClassDelete(payload);
     case 'activity.list':        return fbActivityList(payload);
     case 'activity.create':      return fbActivityCreate(payload);
+    case 'activity.update':      return fbActivityUpdate(payload);
     case 'activity.delete':      return fbActivityDelete(payload);
     case 'activity.get':         return fbActivityGet(payload);
     case 'group.list':           return fbGroupList(payload);
@@ -380,6 +381,15 @@ async function fbActivityCreate({ semester, classId, title, type, description, u
     columnsCreated: false, createdAt: new Date().toISOString()
   });
   return { activityId: id };
+}
+async function fbActivityUpdate({ semester, activityId, title, type, description, url = '', token }) {
+  verifyAdmin(token);
+  await fbPatch('/' + semester + '/activities/' + activityId, {
+    title, type: type || 'basic',
+    description: description || '', url: url || '',
+    updatedAt: new Date().toISOString()
+  });
+  return { ok: true };
 }
 async function fbActivityGet({ semester, activityId }) {
   const a = await fbGet('/' + semester + '/activities/' + activityId);
@@ -684,7 +694,7 @@ async function openNotes() {
       </div>`).join('');
 
     root.querySelectorAll('[data-action="view-note"]').forEach(b => {
-      b.addEventListener('click', () => openNoteDetail(b.dataset.id));
+      b.addEventListener('click', () => openNoteView(b.dataset.id));
     });
     root.querySelectorAll('[data-action="edit-note"]').forEach(b => {
       b.addEventListener('click', () => openNoteModal(b.dataset.id));
@@ -740,6 +750,76 @@ async function openNoteDetail(noteId) {
     }
     $('#note-detail-body').innerHTML = html || '<p class="muted">내용이 없습니다.</p>';
   } catch(e) { $('#note-detail-title').textContent = '오류: ' + e.message; }
+}
+
+// ── 강의노트 보기 모달 (목록 화면에서 이동하지 않고 팝업으로 표시) ──────
+async function openNoteView(noteId) {
+  const modal = $('#modal-note-view');
+  $('#noteview-title').textContent = '불러오는 중…';
+  $('#noteview-meta').textContent = '';
+  $('#noteview-body').innerHTML = '';
+  $('#noteview-actions').innerHTML = '';
+  modal.hidden = false;
+
+  try {
+    const n = await api('note.get', { semester: state.semester, noteId });
+    $('#noteview-title').textContent = n.title;
+    $('#noteview-meta').textContent = fmtDate(n.createdAt);
+
+    let html = '';
+    // 본문 (리치텍스트 HTML)
+    if (n.body) html += `<div class="note-body-content">${n.body}</div>`;
+    // 유튜브 임베드 / 링크
+    if (n.url) {
+      const ytId = extractYoutubeId(n.url);
+      if (ytId) {
+        html += `<div class="note-video-wrap"><iframe src="https://www.youtube.com/embed/${ytId}"
+          frameborder="0" allowfullscreen></iframe></div>`;
+      } else {
+        html += `<a class="note-link" href="${escapeHtml(n.url)}" target="_blank" rel="noopener">🔗 ${escapeHtml(n.url)}</a>`;
+      }
+    }
+    // 첨부파일
+    if (n.fileUrl) {
+      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(n.fileName || '');
+      if (isImg) {
+        html += `<div class="note-img-wrap"><img src="${escapeHtml(n.fileUrl)}" alt="${escapeHtml(n.fileName||'이미지')}" /></div>
+          <a class="n-file" href="${escapeHtml(n.fileUrl)}" download="${escapeHtml(n.fileName||'image')}" target="_blank" rel="noopener">⬇ ${escapeHtml(n.fileName||'이미지')} 다운로드</a>`;
+      } else {
+        html += `<a class="n-file" href="${escapeHtml(n.fileUrl)}" download="${escapeHtml(n.fileName||'file')}" target="_blank" rel="noopener">⬇ ${escapeHtml(n.fileName||'첨부파일')} 다운로드</a>`;
+      }
+    }
+    $('#noteview-body').innerHTML = html || '<p class="muted">내용이 없습니다.</p>';
+
+    // 관리자에게만 수정/삭제 버튼 노출
+    $('#noteview-actions').innerHTML = isAdmin() ? `
+      <button class="btn-ghost" id="btn-noteview-delete">삭제</button>
+      <button class="btn-secondary" id="btn-noteview-edit">수정</button>
+      <button class="btn-primary" id="btn-noteview-close">닫기</button>
+    ` : `<button class="btn-primary" id="btn-noteview-close">닫기</button>`;
+
+    $('#btn-noteview-close').addEventListener('click', () => { modal.hidden = true; });
+    if (isAdmin()) {
+      $('#btn-noteview-edit').addEventListener('click', () => {
+        modal.hidden = true;
+        openNoteModal(noteId);
+      });
+      $('#btn-noteview-delete').addEventListener('click', async () => {
+        if (!confirm('이 강의노트를 삭제할까요?')) return;
+        try {
+          await api('note.delete', { semester: state.semester, noteId, token: state.adminToken });
+          toast('삭제했습니다.', 'success');
+          modal.hidden = true;
+          openNotes();
+        } catch(e) { toast(e.message, 'error'); }
+      });
+    }
+  } catch(e) {
+    $('#noteview-title').textContent = '오류';
+    $('#noteview-body').innerHTML = `<p class="muted">${escapeHtml(e.message)}</p>`;
+    $('#noteview-actions').innerHTML = `<button class="btn-primary" id="btn-noteview-close">닫기</button>`;
+    $('#btn-noteview-close').addEventListener('click', () => { modal.hidden = true; });
+  }
 }
 
 function extractYoutubeId(url) {
@@ -938,16 +1018,26 @@ async function renderActivities() {
           <div class="a-desc">${isLink?'외부 링크 활동':escapeHtml(a.description||(isInq?'탐구 5단계':'일반 활동'))}</div>
         </div>
         <div class="a-actions">
-          ${isAdmin()?`<button class="btn-ghost" data-action="del-activity" data-id="${a.activityId}">삭제</button>`:''}
+          ${isAdmin()?`<button class="btn-ghost" data-action="edit-activity" data-id="${a.activityId}">수정</button>
+          <button class="btn-ghost" data-action="del-activity" data-id="${a.activityId}">삭제</button>`:''}
           <button class="btn-primary" data-action="open">${isLink?'열기 →':'입장 →'}</button>
         </div>
       </div>`;
     }).join('');
     root.querySelectorAll('.activity-card').forEach(card => {
       card.addEventListener('click', e => {
-        if (e.target.closest('[data-action="del-activity"]')) return;
+        if (e.target.closest('[data-action="del-activity"]') || e.target.closest('[data-action="edit-activity"]')) return;
         openActivity({ activityId: card.dataset.id, title: card.dataset.title,
           type: card.dataset.type, columnsCreated: card.dataset.cols === '1', url: card.dataset.url || '' });
+      });
+    });
+    root.querySelectorAll('[data-action="edit-activity"]').forEach(b => {
+      b.addEventListener('click', async e => {
+        e.stopPropagation();
+        try {
+          const a = await api('activity.get', { semester: state.semester, activityId: b.dataset.id });
+          openActivityModal(a);
+        } catch(e) { toast(e.message, 'error'); }
       });
     });
     root.querySelectorAll('[data-action="del-activity"]').forEach(b => {
@@ -963,23 +1053,56 @@ async function renderActivities() {
   } catch(e) { root.innerHTML = `<p class="muted">오류: ${escapeHtml(e.message)}</p>`; }
 }
 
-async function newActivity() {
-  const name = await prompt2('활동 만들기', '활동명을 입력하세요.');
-  if (!name) return;
-  const isLink = confirm('외부 링크 활동인가요?\n[확인] 링크 / [취소] 일반·탐구');
+// ── 활동 만들기 / 수정 모달 ──────────────────────────────────
+let activityEditId = null;
+
+function openActivityModal(editData = null) {
+  activityEditId = editData ? editData.activityId : null;
+  $('#modal-activity-title').textContent = editData ? '활동 수정' : '활동 만들기';
+  $('#activity-name').value = editData ? (editData.title || '') : '';
+
+  const isLink = editData ? editData.type === 'link' : false;
+  $('#activity-kind').value = isLink ? 'link' : 'normal';
+  $('#activity-url').value = editData ? (editData.url || '') : '';
+  $('#activity-subtype').value = (editData && editData.type === 'inquiry') ? 'inquiry' : 'basic';
+
+  toggleActivityKindFields();
+  $('#modal-activity').hidden = false;
+  $('#activity-name').focus();
+}
+
+function toggleActivityKindFields() {
+  const isLink = $('#activity-kind').value === 'link';
+  $('#activity-link-wrap').hidden = !isLink;
+  $('#activity-type-wrap').hidden = isLink;
+}
+
+async function submitActivity() {
+  const title = $('#activity-name').value.trim();
+  if (!title) return toast('활동명을 입력하세요.', 'error');
+
+  const isLink = $('#activity-kind').value === 'link';
   let type = 'basic', url = '';
   if (isLink) {
+    url = $('#activity-url').value.trim();
+    if (!url) return toast('외부 링크 URL을 입력하세요.', 'error');
     type = 'link';
-    url = await prompt2('활동 URL', '학생에게 열어줄 주소를 입력하세요.');
-    if (!url) return;
   } else {
-    const isInq = confirm('탐구 질문 5단계 활동인가요?\n[확인] 탐구 / [취소] 일반');
-    type = isInq ? 'inquiry' : 'basic';
+    type = $('#activity-subtype').value === 'inquiry' ? 'inquiry' : 'basic';
   }
+
   try {
-    await api('activity.create', { semester: state.semester, classId: state.cur.classId,
-      title: name, type, url, description: '', token: state.adminToken });
-    toast('활동을 생성했습니다.', 'success'); renderActivities();
+    if (activityEditId) {
+      await api('activity.update', { semester: state.semester, activityId: activityEditId,
+        title, type, url, description: '', token: state.adminToken });
+      toast('활동을 수정했습니다.', 'success');
+    } else {
+      await api('activity.create', { semester: state.semester, classId: state.cur.classId,
+        title, type, url, description: '', token: state.adminToken });
+      toast('활동을 생성했습니다.', 'success');
+    }
+    $('#modal-activity').hidden = true;
+    renderActivities();
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -1006,16 +1129,22 @@ async function openActivity(act) {
 }
 
 async function refreshBoard() {
+  // 활동을 빠르게 전환했을 때, 이전 활동의 응답이 늦게 도착해 현재 화면을
+  // 덮어써버리는 경쟁 조건(race condition)을 막기 위해 요청 시점의 활동ID를 고정해둔다.
+  const reqActivityId = state.cur.activityId;
   try {
-    const a = await api('activity.get', { semester: state.semester, activityId: state.cur.activityId });
+    const a = await api('activity.get', { semester: state.semester, activityId: reqActivityId });
+    if (state.cur.activityId !== reqActivityId) return; // 이미 다른 활동으로 이동함 → 무시
     state.cur.columnsCreated = !!(a.columnsCreated === true || a.columnsCreated === 'true' || a.columnsCreated === 'TRUE');
   } catch {}
+  if (state.cur.activityId !== reqActivityId) return;
   $('#btn-make-columns').hidden = !(isAdmin() && !state.cur.columnsCreated);
   $('#btn-export').hidden = !isAdmin();
   const [groups, posts] = await Promise.all([
-    api('group.list', { semester: state.semester, activityId: state.cur.activityId }),
-    api('post.list',  { semester: state.semester, activityId: state.cur.activityId, includeHidden: isAdmin() })
+    api('group.list', { semester: state.semester, activityId: reqActivityId }),
+    api('post.list',  { semester: state.semester, activityId: reqActivityId, includeHidden: isAdmin() })
   ]);
+  if (state.cur.activityId !== reqActivityId) return; // 응답 도착 시점에 이미 다른 활동을 보고 있다면 무시
   state.cur.groups = groups;
   if (state.cur.columnsCreated && groups.length > 0) {
     renderColumns(groups, posts);
@@ -1070,9 +1199,9 @@ function renderPost(p) {
   const hidden = p.status === 'hidden' ? ' hidden-post' : '';
   const adminCls = p.name === '관리자' ? ' admin-post' : '';
   const stepsHtml = isInq ? `<div class="n-steps">
-    ${p.step1?`<div class="n-step"><b>① 관찰 중 궁금했던 점</b>${escapeHtml(p.step1)}</div>`:''}
+    ${p.step1?`<div class="n-step"><b>① 학습 내용 중 궁금한 점</b>${escapeHtml(p.step1)}</div>`:''}
     ${p.step2?`<div class="n-step"><b>② 탐구 질문</b>${escapeHtml(p.step2)}</div>`:''}
-    ${p.step3?`<div class="n-step"><b>③ 예상 답변</b>${escapeHtml(p.step3)}</div>`:''}
+    ${p.step3?`<div class="n-step"><b>③ 탐구 질문에 대한 나의 탐구 결과</b>${escapeHtml(p.step3)}</div>`:''}
     ${p.step4?`<div class="n-step"><b>④ AI 답변</b>${escapeHtml(p.step4)}</div>`:''}
     ${p.step5?`<div class="n-step"><b>⑤ 비판적 검토</b>${escapeHtml(p.step5)}</div>`:''}
   </div>` : '';
@@ -1462,7 +1591,9 @@ function bindOnce() {
   // 반 목록
   $('#btn-back-from-classes').addEventListener('click', showHome);
   $('#btn-new-class').addEventListener('click', newClass);
-  $('#btn-new-activity').addEventListener('click', newActivity);
+  $('#btn-new-activity').addEventListener('click', () => openActivityModal());
+  $('#activity-kind').addEventListener('change', toggleActivityKindFields);
+  $('#btn-submit-activity').addEventListener('click', submitActivity);
   $('#btn-clear-posts').addEventListener('click', clearPostsByClass);
   $('#btn-make-columns').addEventListener('click', makeColumns);
   $('#btn-export').addEventListener('click', exportCsv);
