@@ -11,7 +11,13 @@
    ============================================================ */
 
 const FB_URL     = 'https://yulha-2026-1-default-rtdb.asia-southeast1.firebasedatabase.app/';
-const FB_STORAGE = 'yulha-2026-1.appspot.com';
+const FB_STORAGE = 'yulha-2026-1.appspot.com'; // ⚠ 더 이상 사용하지 않지만 삭제하지 않고 보존
+
+// 강의노트 첨부파일 업로드용 Google Apps Script 웹앱 주소
+// (Apps Script 배포 후 발급되는 /exec 로 끝나는 URL을 여기에 붙여넣으세요)
+const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzRydoKELBIKmT4Dtf8BqXv2ZRzVZ_vwp1rMsAgMHAobiNOFnpY56PHw5Oe0HSGivg/exec';
+// Code.gs의 UPLOAD_KEY 값과 반드시 동일하게 맞춰주세요
+const GAS_UPLOAD_KEY = 'yulha-note-upload-2026';
 
 // 버전이 바뀌면 구버전 세션 자동 삭제
 const APP_VERSION = 'v6';
@@ -159,29 +165,28 @@ function verifyAdmin(token) {
   if (!state.adminToken || state.adminToken !== token)
     throw new Error('관리자 권한이 없습니다.');
 }
+// Google Drive(Apps Script 웹앱)로 파일 업로드
 async function fbUploadFile(base64, fileName, mime) {
-  if (FB_STORAGE.includes('YOUR_PROJECT_ID')) {
-    throw new Error('Storage 설정이 안 되어 있습니다. app_firebase.js의 FB_STORAGE 값을 실제 프로젝트 ID로 교체하세요. (예: gimhae-lesson-2026.appspot.com)');
+  if (!GAS_UPLOAD_URL || GAS_UPLOAD_URL.includes('PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE')) {
+    throw new Error('업로드 서버 주소가 설정되어 있지 않습니다. app_firebase.js의 GAS_UPLOAD_URL 값을 Apps Script 배포 URL로 교체하세요.');
   }
-  const ext  = fileName.split('.').pop();
-  const path = 'uploads/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
-  const url  = 'https://firebasestorage.googleapis.com/v0/b/' + FB_STORAGE
-             + '/o?uploadType=media&name=' + encodeURIComponent(path);
-  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
   let r;
   try {
-    r = await fetch(url, { method: 'POST', headers: { 'Content-Type': mime }, body: bytes });
+    r = await fetch(GAS_UPLOAD_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // GAS doPost 단순 파싱을 위해 text/plain 사용
+      body: JSON.stringify({ key: GAS_UPLOAD_KEY, fileBase64: base64, fileName, mime })
+    });
   } catch (networkErr) {
-    throw new Error('Storage 서버에 연결할 수 없습니다. Firebase Console에서 Storage가 활성화되어 있는지, FB_STORAGE 값이 정확한지 확인하세요.');
+    throw new Error('업로드 서버(Google Apps Script)에 연결할 수 없습니다. 배포 URL이 올바른지, 배포가 "웹 앱"으로 되어 있는지 확인하세요.');
   }
   if (!r.ok) {
-    if (r.status === 403) throw new Error('Storage 권한 오류(403). Storage 보안 규칙을 테스트 모드로 설정하세요.');
-    if (r.status === 404) throw new Error('Storage 버킷을 찾을 수 없습니다(404). FB_STORAGE 값이 정확한지 확인하세요.');
     throw new Error('파일 업로드 실패 (HTTP ' + r.status + ')');
   }
   const d = await r.json();
-  return 'https://firebasestorage.googleapis.com/v0/b/' + FB_STORAGE
-       + '/o/' + encodeURIComponent(path) + '?alt=media&token=' + d.downloadTokens;
+  if (d.error) throw new Error('업로드 실패: ' + d.error);
+  if (!d.fileUrl) throw new Error('업로드 응답에 fileUrl이 없습니다.');
+  return d.fileUrl;
 }
 
 // ── api 디스패처 ───────────────────────────────────────────
@@ -724,7 +729,8 @@ async function openNoteDetail(noteId) {
     }
     // 파일 첨부
     if (n.fileUrl) {
-      const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(n.fileUrl);
+      // Drive 다운로드 URL에는 확장자가 없으므로 fileUrl 대신 fileName으로 이미지 여부 판별
+      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(n.fileName || '');
       if (isImg) {
         html += `<div class="note-img-wrap"><img src="${escapeHtml(n.fileUrl)}" alt="${escapeHtml(n.fileName||'이미지')}" /></div>
           <a class="n-file" href="${escapeHtml(n.fileUrl)}" download="${escapeHtml(n.fileName||'image')}" target="_blank" rel="noopener">⬇ ${escapeHtml(n.fileName||'이미지')} 다운로드</a>`;
