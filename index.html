@@ -274,7 +274,7 @@
       </header>
       <div class="seg-tabs">
         <button class="seg active" data-type="basic">일반 게시물</button>
-        <button class="seg" data-type="inquiry">탐구 질문 (5단계)</button>
+        <button class="seg" data-type="inquiry">탐구 게시물</button>
       </div>
       <div class="modal-body">
         <div class="meta-line">
@@ -290,9 +290,9 @@
           <label class="field"><span>내용</span><textarea id="post-content" rows="5" placeholder="게시물 내용을 입력하세요."></textarea></label>
         </div>
         <div data-show="inquiry" class="inquiry-stack" hidden>
-          <div class="step-card"><span class="step-num">1</span><div><strong>관찰 중 궁금했던 점</strong><textarea id="step1" rows="2" placeholder="관찰 과정에서 어떤 점이 궁금했는지 자유롭게 적어보세요."></textarea></div></div>
+          <div class="step-card"><span class="step-num">1</span><div><strong>학습 내용 중 궁금한 점</strong><textarea id="step1" rows="2" placeholder="학습 내용 중 어떤 점이 궁금했는지 자유롭게 적어보세요."></textarea></div></div>
           <div class="step-card"><span class="step-num">2</span><div><strong>탐구 질문</strong><textarea id="step2" rows="2" placeholder="궁금증을 구체적인 탐구 질문 문장으로 만들어보세요."></textarea></div></div>
-          <div class="step-card"><span class="step-num">3</span><div><strong>예상 답변</strong><textarea id="step3" rows="2" placeholder="내가 생각하는 답을 이유와 함께 적어보세요."></textarea></div></div>
+          <div class="step-card"><span class="step-num">3</span><div><strong>탐구 질문에 대한 나의 탐구 결과</strong><textarea id="step3" rows="2" placeholder="이유와 함께 내가 탐구한 결과를 적어보세요."></textarea></div></div>
           <div class="step-card"><span class="step-num">4</span><div><strong>AI 답변</strong><textarea id="step4" rows="2" placeholder="AI에게 물어본 답을 내 언어로 정리해서 적어보세요."></textarea></div></div>
           <div class="step-card"><span class="step-num">5</span><div><strong>비판적 검토</strong><textarea id="step5" rows="2" placeholder="내 예상 답변과 AI 답변을 비교하여 부족한 점·다른 점을 검토해보세요."></textarea></div></div>
         </div>
@@ -302,6 +302,60 @@
         <button class="btn-ghost" data-close="modal-post">취소</button>
         <button id="btn-submit-post" class="btn-primary">게시하기</button>
       </footer>
+    </div>
+  </div>
+
+  <!-- ======================== 활동 만들기/수정 모달 ======================== -->
+  <div id="modal-activity" class="modal" hidden>
+    <div class="modal-card">
+      <header class="modal-head">
+        <h3 id="modal-activity-title">활동 만들기</h3>
+        <button class="icon-btn" data-close="modal-activity">✕</button>
+      </header>
+      <div class="modal-body">
+        <label class="field"><span>활동명</span>
+          <input type="text" id="activity-name" placeholder="예: 우리 동네 문제 찾기" />
+        </label>
+
+        <label class="field"><span>활동 종류</span>
+          <select id="activity-kind">
+            <option value="normal">게시판 활동 (일반 · 탐구)</option>
+            <option value="link">외부 링크 활동</option>
+          </select>
+        </label>
+
+        <div id="activity-link-wrap" class="field" hidden>
+          <span>외부 링크 URL</span>
+          <input type="url" id="activity-url" placeholder="https://..." />
+        </div>
+
+        <div id="activity-type-wrap" class="field">
+          <span>세부 유형</span>
+          <select id="activity-subtype">
+            <option value="basic">일반 활동</option>
+            <option value="inquiry">탐구 질문 (5단계)</option>
+          </select>
+        </div>
+      </div>
+      <footer class="modal-foot">
+        <button class="btn-ghost" data-close="modal-activity">취소</button>
+        <button id="btn-submit-activity" class="btn-primary">저장</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ======================== 강의노트 보기 모달 ======================== -->
+  <div id="modal-note-view" class="modal" hidden>
+    <div class="modal-card modal-card-wide">
+      <header class="modal-head">
+        <div>
+          <h3 id="noteview-title">강의노트</h3>
+          <p class="muted" id="noteview-meta" style="margin:2px 0 0;"></p>
+        </div>
+        <button class="icon-btn" data-close="modal-note-view">✕</button>
+      </header>
+      <div class="modal-body" id="noteview-body"></div>
+      <footer class="modal-foot" id="noteview-actions"></footer>
     </div>
   </div>
 
