@@ -301,6 +301,7 @@ input,textarea,select{font-family:inherit;font-size:inherit;}
 }
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -323,6 +324,7 @@ input,textarea,select{font-family:inherit;font-size:inherit;}
     <div class="badge" id="countBadge"><span class="pulse"></span>0모둠 제출</div>
     <div class="ctrl">
       <button class="btn btn-ref" onclick="loadData()">↻ 새로고침</button>
+      <button class="btn btn-ref" onclick="exportExcel()">⇩ 엑셀 다운로드</button>
       <button class="btn btn-clr" onclick="clearAll()">🗑 초기화</button>
       <button class="btn btn-ref" onclick="showSetup()">⚙️</button>
     </div>
@@ -382,6 +384,9 @@ input,textarea,select{font-family:inherit;font-size:inherit;}
 
 <script>
 var FB_URL = localStorage.getItem('fb_url') || 'https://yulha-2026-1-default-rtdb.asia-southeast1.firebasedatabase.app';
+// 제출자료 "초기화" 버튼을 비밀번호로 보호하기 위해서만 사용하는 서버 주소
+// (SOCIAL BOARD와 같은 Apps Script 배포 주소를 그대로 붙여넣으세요)
+var API_URL = 'https://script.google.com/macros/s/AKfycbzRydoKELBIKmT4Dtf8BqXv2ZRzVZ_vwp1rMsAgMHAobiNOFnpY56PHw5Oe0HSGivg/exec';
 var DEMO_DATA = null;
 var pollTimer = null;
 var LAST_ARROW_DATA = null;
@@ -452,9 +457,84 @@ function loadData(){
 function clearAll(){
   if(!FB_URL){ DEMO_DATA=null; render(null); return; }
   if(!confirm('모든 제출 데이터를 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) return;
-  fetch(FB_URL+'/submissions.json',{method:'DELETE'})
-  .then(function(){ render(null); })
+  var pw = prompt('삭제 비밀번호를 입력하세요.');
+  if(pw === null) return; // 취소
+  if(!API_URL || API_URL.indexOf('PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') !== -1){
+    alert('삭제 서버 주소가 설정되어 있지 않습니다. API_URL 값을 확인하세요.');
+    return;
+  }
+  fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'ghboard.clearSubmissions', payload: { key: pw } })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d && d.error){ alert('삭제 실패: '+d.error); return; }
+    render(null);
+    alert('삭제되었습니다.');
+  })
   .catch(function(){ alert('삭제 실패. 네트워크를 확인하세요.'); });
+}
+
+// ── 엑셀 다운로드 (흐름시각화 · 협의안 시트로 구분) ──────────
+function fmtTs(ts){
+  if(!ts) return '';
+  var d = new Date(ts);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+    +' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){
+    alert('엑셀 생성 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침 해주세요.');
+    return;
+  }
+  var arrowData = LAST_ARROW_DATA || (DEMO_DATA ? DEMO_DATA : null);
+  var planData  = LAST_PLAN_DATA;
+
+  // 시트1: 흐름시각화 (화살표 단위로 한 행씩)
+  var arrowRows = [];
+  if(arrowData){
+    Object.values(arrowData).forEach(function(sub){
+      if(!sub || !sub.groupName) return;
+      var arrows = sub.arrows || [];
+      if(arrows.length === 0){
+        arrowRows.push({ 모둠: sub.groupName, 제출시각: fmtTs(sub.timestamp), 출발지:'', 도착지:'', 근거:'', 영향:'' });
+      } else {
+        arrows.forEach(function(a){
+          arrowRows.push({
+            모둠: sub.groupName, 제출시각: fmtTs(sub.timestamp),
+            출발지: a.fromLabel || a.from || '', 도착지: a.toLabel || a.to || '',
+            근거: a.q1 || '', 영향: a.q2 || ''
+          });
+        });
+      }
+    });
+  }
+  if(arrowRows.length === 0) arrowRows.push({ 모둠:'', 제출시각:'', 출발지:'', 도착지:'', 근거:'', 영향:'' });
+
+  // 시트2: 협의안 (제출 단위로 한 행씩)
+  var planRows = [];
+  if(planData){
+    Object.values(planData).forEach(function(p){
+      if(!p || !p.groupName) return;
+      planRows.push({
+        모둠: p.groupName, 제출시각: fmtTs(p.timestamp),
+        문제유형: p.problem || '', 관련흐름과핵심원인: p.arrowRef || '', 원인: p.cause || '',
+        해결주체: (p.agents || []).join(', '), 구체적방안: p.plan || '',
+        예상되는어려움: p.limit || '', 챗봇질문: p.chatQ || ''
+      });
+    });
+  }
+  if(planRows.length === 0) planRows.push({ 모둠:'', 제출시각:'', 문제유형:'', 관련흐름과핵심원인:'', 원인:'', 해결주체:'', 구체적방안:'', 예상되는어려움:'', 챗봇질문:'' });
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(arrowRows), '흐름시각화');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(planRows), '협의안');
+
+  var today = new Date();
+  var fname = '제출자료_' + today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0') + '.xlsx';
+  XLSX.writeFile(wb, fname);
 }
 
 // ── 렌더링 ────────────────────────────────────
