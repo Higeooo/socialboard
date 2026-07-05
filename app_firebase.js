@@ -1,48 +1,45 @@
 /* ============================================================
-   SOCIAL BOARD v3 — Firebase Realtime Database Edition
+   SOCIAL BOARD v7 — GAS 대리서버(Apps Script Proxy) Edition
    ============================================================
-   변경사항:
-   - 홈 화면 (강의노트 탭 / 게시판 탭 선택)
-   - 강의노트 기능 (리치텍스트, 유튜브, 파일첨부, 반별 게시)
-   - 학생: 자기 반 게시판만 표시 (학번 파싱)
-   - 반 이름 수정 기능
-   - 반 게시물 일괄 삭제 기능
-   - 모바일 대응
+   보안 구조 변경사항 (2026-07)
+   - 브라우저가 Firebase Realtime Database에 더 이상 직접 접근하지 않음.
+   - 모든 데이터 읽기/쓰기는 Google Apps Script 웹앱(Code.gs)을 경유하며,
+     실제 Firebase 접근(Database Secret)은 그 서버 코드 안에만 존재함.
+   - Firebase 콘솔의 Realtime Database 규칙은 완전히 잠긴 상태
+     ({ ".read": false, ".write": false })여야 이 구조가 의미가 있음.
+   - 관리자 비밀번호는 해시로 저장되고, 로그인 토큰은 매 로그인마다
+     새로 발급되는 무작위 값이며 서버(Code.gs)가 유효성을 직접 검증함.
    ============================================================ */
 
+// 참고용으로만 보존 (클라이언트에서는 더 이상 직접 호출하지 않음 — 실제 접근은 Code.gs가 수행)
 const FB_URL     = 'https://yulha-2026-1-default-rtdb.asia-southeast1.firebasedatabase.app/';
 const FB_STORAGE = 'yulha-2026-1.appspot.com'; // ⚠ 더 이상 사용하지 않지만 삭제하지 않고 보존
 
-// 강의노트 첨부파일 업로드용 Google Apps Script 웹앱 주소
+// 모든 데이터 요청(로그인·게시물·강의노트·첨부파일 업로드 등)이 향하는 단일 서버 주소
 // (Apps Script 배포 후 발급되는 /exec 로 끝나는 URL을 여기에 붙여넣으세요)
 const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzRydoKELBIKmT4Dtf8BqXv2ZRzVZ_vwp1rMsAgMHAobiNOFnpY56PHw5Oe0HSGivg/exec';
-// Code.gs의 UPLOAD_KEY 값과 반드시 동일하게 맞춰주세요
+// 파일 첨부(수동 업로드 경로)에서만 사용되는 값 — Code.gs의 UPLOAD_KEY와 동일해야 함
 const GAS_UPLOAD_KEY = 'yulha-note-upload-2026';
 
 // 버전이 바뀌면 구버전 세션 자동 삭제
-const APP_VERSION = 'v6';
+const APP_VERSION = 'v7';
 if (sessionStorage.getItem('sb.version') !== APP_VERSION) {
   sessionStorage.clear();
   sessionStorage.setItem('sb.version', APP_VERSION);
 }
 
 /*
-  ── Firebase 데이터 구조 ─────────────────────────────────────
+  ── 데이터 구조 (실제 저장/조회 로직은 Code.gs에 있음) ──────────
   /meta/activeSemester
-  /admins/{adminId}/password
+  /admins/{adminId}/passwordHash
+  /adminSessions/{token}/{ adminId, issuedAt }
   /codes/{codeId}/{ value, label, expiresAt }
   /pending/{sid}/{ name, passwordHash, requestedAt }
   /students/{sid}/{ name, klass, passwordHash, approved, approvedAt }
-  /{semester}/notes/{noteId}/{ title, body, url, fileUrl, fileName,
-      targetClasses:["all"|classId...], createdAt }
-  /{semester}/classes/{classId}/{ className, createdAt }
-  /{semester}/activities/{id}/{ classId, title, type, ... }
-  /{semester}/groups/{id}/{ activityId, title, order }
-  /{semester}/posts/{id}/{ activityId, groupId, sid, name, ... }
+  /{semester}/notes|classes|activities|boardLinks|groups|posts/...
 
   ── 학번 규칙 ───────────────────────────────────────────────
   5자리: 학년(1) + 학반(2) + 번호(2)
-  예) 10315 → 1학년 03반 15번 → "1학년 3반"
   ──────────────────────────────────────────────────────────── */
 
 // ── 전역 상태 ──────────────────────────────────────────────
@@ -106,12 +103,6 @@ function show(screenId) {
 
 function isAdmin() { return !!(state.user && state.user.admin); }
 
-// SHA-256
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
 // ── 세션 ───────────────────────────────────────────────────
 function saveSession() {
   sessionStorage.setItem('sb.session', JSON.stringify({
@@ -137,463 +128,28 @@ function clearSession() {
   state.user = null; state.adminToken = null;
 }
 
-// ── Firebase Helpers ────────────────────────────────────────
-async function fbReq(path, method = 'GET', data = null) {
-  const url = FB_URL + path + '.json';
-  const opts = { method };
-  if (data !== null) {
-    opts.headers = { 'Content-Type': 'application/json' };
-    opts.body = JSON.stringify(data);
-  }
-  const r = await fetch(url, opts);
-  if (!r.ok) throw new Error('Firebase 오류: HTTP ' + r.status);
-  return r.json();
-}
-const fbGet    = path      => fbReq(path);
-const fbSet    = (path, d) => fbReq(path, 'PUT', d);
-const fbPatch  = (path, d) => fbReq(path, 'PATCH', d);
-const fbDelete = path      => fbReq(path, 'DELETE');
-async function fbPush(path, data) {
-  const r = await fbReq(path, 'POST', data);
-  return r.name;
-}
-function objToArr(obj) {
-  if (!obj) return [];
-  return Object.entries(obj).map(([k, v]) => ({ _id: k, ...v }));
-}
-function verifyAdmin(token) {
-  if (!state.adminToken || state.adminToken !== token)
-    throw new Error('관리자 권한이 없습니다.');
-}
-// Google Drive(Apps Script 웹앱)로 파일 업로드
-async function fbUploadFile(base64, fileName, mime) {
+// ── api: 모든 요청이 이 한 함수를 통해 GAS 서버로 향함 ─────────
+// (Firebase에는 이 서버만 접근하며, 브라우저는 Firebase 주소를 직접 호출하지 않음)
+async function api(action, payload = {}) {
   if (!GAS_UPLOAD_URL || GAS_UPLOAD_URL.includes('PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE')) {
-    throw new Error('업로드 서버 주소가 설정되어 있지 않습니다. app_firebase.js의 GAS_UPLOAD_URL 값을 Apps Script 배포 URL로 교체하세요.');
+    throw new Error('서버 주소가 설정되어 있지 않습니다. app_firebase.js의 GAS_UPLOAD_URL 값을 Apps Script 배포 URL로 교체하세요.');
   }
   let r;
   try {
     r = await fetch(GAS_UPLOAD_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // GAS doPost 단순 파싱을 위해 text/plain 사용
-      body: JSON.stringify({ key: GAS_UPLOAD_KEY, fileBase64: base64, fileName, mime })
+      // text/plain 사용 이유: application/json으로 보내면 브라우저가 CORS 사전요청(OPTIONS)을
+      // 먼저 보내는데, Apps Script 웹앱은 이를 처리하지 못해 요청이 실패함.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, payload })
     });
   } catch (networkErr) {
-    throw new Error('업로드 서버(Google Apps Script)에 연결할 수 없습니다. 배포 URL이 올바른지, 배포가 "웹 앱"으로 되어 있는지 확인하세요.');
+    throw new Error('서버(Google Apps Script)에 연결할 수 없습니다. 배포 URL이 올바른지, 배포가 "웹 앱"으로 되어 있는지 확인하세요.');
   }
-  if (!r.ok) {
-    throw new Error('파일 업로드 실패 (HTTP ' + r.status + ')');
-  }
+  if (!r.ok) throw new Error('서버 오류 (HTTP ' + r.status + ')');
   const d = await r.json();
-  if (d.error) throw new Error('업로드 실패: ' + d.error);
-  if (!d.fileUrl) throw new Error('업로드 응답에 fileUrl이 없습니다.');
-  return d.fileUrl;
-}
-
-// ── api 디스패처 ───────────────────────────────────────────
-async function api(action, payload = {}) {
-  switch (action) {
-    case 'auth.studentLogin':    return fbStudentLogin(payload);
-    case 'auth.studentRegister': return fbStudentRegister(payload);
-    case 'auth.adminLogin':      return fbAdminLogin(payload);
-    case 'meta.activeSemester':  return fbGetMeta();
-    case 'meta.setSemester':     return fbSetSemester(payload);
-    case 'note.list':            return fbNoteList(payload);
-    case 'note.get':             return fbNoteGet(payload);
-    case 'note.create':          return fbNoteCreate(payload);
-    case 'note.update':          return fbNoteUpdate(payload);
-    case 'note.delete':          return fbNoteDelete(payload);
-    case 'class.list':           return fbClassList(payload);
-    case 'class.create':         return fbClassCreate(payload);
-    case 'class.rename':         return fbClassRename(payload);
-    case 'class.delete':         return fbClassDelete(payload);
-    case 'activity.list':        return fbActivityList(payload);
-    case 'activity.create':      return fbActivityCreate(payload);
-    case 'activity.update':      return fbActivityUpdate(payload);
-    case 'activity.delete':      return fbActivityDelete(payload);
-    case 'boardlink.list':       return fbBoardLinkList(payload);
-    case 'boardlink.create':     return fbBoardLinkCreate(payload);
-    case 'boardlink.update':     return fbBoardLinkUpdate(payload);
-    case 'boardlink.delete':     return fbBoardLinkDelete(payload);
-    case 'activity.get':         return fbActivityGet(payload);
-    case 'group.list':           return fbGroupList(payload);
-    case 'group.makeColumns':    return fbMakeColumns(payload);
-    case 'group.rename':         return fbGroupRename(payload);
-    case 'post.list':            return fbPostList(payload);
-    case 'post.create':          return fbPostCreate(payload);
-    case 'post.moderate':        return fbPostModerate(payload);
-    case 'post.clearByClass':    return fbClearPostsByClass(payload);
-    case 'export.csv':           return fbExportCsv(payload);
-    case 'member.pendingList':   return fbPendingList(payload);
-    case 'member.approve':       return fbApprove(payload);
-    case 'member.reject':        return fbReject(payload);
-    case 'member.withdraw':      return fbWithdraw(payload);
-    case 'member.resetPassword': return fbResetPassword(payload);
-    case 'member.activeList':    return fbActiveList(payload);
-    case 'code.list':            return fbCodeList(payload);
-    case 'code.create':          return fbCodeCreate(payload);
-    case 'code.delete':          return fbCodeDelete(payload);
-    default: throw new Error('Unknown action: ' + action);
-  }
-}
-
-// ── 인증 ───────────────────────────────────────────────────
-async function fbStudentLogin({ sid, password }) {
-  const student = await fbGet('/students/' + sid);
-  if (!student) throw new Error('등록되지 않은 학번입니다. 회원가입을 먼저 진행해 주세요.');
-  if (!student.approved) throw new Error('관리자 승인 대기 중입니다. 잠시 후 다시 시도해 주세요.');
-  const hash = await sha256(password);
-  if (student.passwordHash !== hash) throw new Error('비밀번호가 올바르지 않습니다.');
-  const klass = sidToKlass(sid);
-  return { sid, name: student.name, klass };
-}
-
-async function fbStudentRegister({ sid, name, password, code }) {
-  if (!sid || sid.length !== 5 || !/^\d{5}$/.test(sid))
-    throw new Error('학번은 숫자 5자리여야 합니다.');
-  const existing = await fbGet('/students/' + sid);
-  if (existing && existing.approved) throw new Error('이미 가입된 학번입니다.');
-  const pending = await fbGet('/pending/' + sid);
-  if (pending) throw new Error('이미 승인 대기 중입니다. 관리자 승인을 기다려 주세요.');
-  const codes = await fbGet('/codes');
-  const codeArr = objToArr(codes);
-  const matched = codeArr.find(c => c.value === code);
-  if (!matched) throw new Error('교사 코드가 올바르지 않습니다.');
-  if (matched.expiresAt && new Date(matched.expiresAt) < new Date())
-    throw new Error('만료된 교사 코드입니다. 담당 선생님께 문의하세요.');
-  const passwordHash = await sha256(password);
-  await fbSet('/pending/' + sid, { name, passwordHash, requestedAt: new Date().toISOString() });
-  return { ok: true };
-}
-
-async function fbAdminLogin({ id, password }) {
-  const admin = await fbGet('/admins/' + id);
-  if (!admin || admin.password !== password)
-    throw new Error('관리자 정보가 올바르지 않습니다.');
-  return { token: password };
-}
-
-// ── 메타 ───────────────────────────────────────────────────
-async function fbGetMeta() {
-  const meta = await fbGet('/meta');
-  return { semester: (meta && meta.activeSemester) || '2026-1' };
-}
-async function fbSetSemester({ semester, token }) {
-  verifyAdmin(token);
-  if (!semester || !semester.trim()) throw new Error('학기명을 입력하세요.');
-  await fbPatch('/meta', { activeSemester: semester.trim() });
-  return { ok: true, semester: semester.trim() };
-}
-
-// ── 강의노트 ────────────────────────────────────────────────
-async function fbNoteList({ semester, klass }) {
-  const raw = await fbGet('/' + semester + '/notes');
-  return objToArr(raw)
-    .filter(n => {
-      if (!n.targetClasses) return true;
-      if (n.targetClasses.includes('all')) return true;
-      if (!klass) return true; // 관리자는 전체 노출
-      return n.targetClasses.includes(klass);
-    })
-    .map(n => ({ noteId: n._id, title: n.title, url: n.url || '',
-      fileUrl: n.fileUrl || '', fileName: n.fileName || '',
-      targetClasses: n.targetClasses || ['all'], createdAt: n.createdAt }))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-async function fbNoteGet({ semester, noteId }) {
-  const n = await fbGet('/' + semester + '/notes/' + noteId);
-  if (!n) throw new Error('강의노트를 찾을 수 없습니다.');
-  return { noteId, ...n };
-}
-
-async function fbNoteCreate({ semester, title, body, url, fileBase64, fileName, fileMime, targetClasses, token }) {
-  verifyAdmin(token);
-  let fileUrl = '', fileNameSaved = '';
-  if (fileBase64 && fileName) {
-    fileUrl = await fbUploadFile(fileBase64, fileName, fileMime || 'application/octet-stream');
-    fileNameSaved = fileName;
-  }
-  const id = await fbPush('/' + semester + '/notes', {
-    title, body: body || '', url: url || '',
-    fileUrl, fileName: fileNameSaved,
-    targetClasses: targetClasses || ['all'],
-    createdAt: new Date().toISOString()
-  });
-  return { noteId: id };
-}
-
-async function fbNoteUpdate({ semester, noteId, title, body, url, targetClasses, token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/notes/' + noteId, {
-    title, body: body || '', url: url || '',
-    targetClasses: targetClasses || ['all'],
-    updatedAt: new Date().toISOString()
-  });
-  return { ok: true };
-}
-
-async function fbNoteDelete({ semester, noteId, token }) {
-  verifyAdmin(token);
-  await fbDelete('/' + semester + '/notes/' + noteId);
-  return { ok: true };
-}
-
-// ── 반 ─────────────────────────────────────────────────────
-async function fbClassList({ semester }) {
-  const raw = await fbGet('/' + semester + '/classes');
-  return objToArr(raw)
-    .map(c => ({ classId: c._id, className: c.className, createdAt: c.createdAt }))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-}
-async function fbClassCreate({ semester, name, token }) {
-  verifyAdmin(token);
-  const id = await fbPush('/' + semester + '/classes', {
-    className: name, createdAt: new Date().toISOString()
-  });
-  return { classId: id };
-}
-async function fbClassRename({ semester, classId, name, token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/classes/' + classId, { className: name });
-  return { ok: true };
-}
-async function fbClassDelete({ semester, classId, token }) {
-  verifyAdmin(token);
-  const acts = objToArr(await fbGet('/' + semester + '/activities'))
-    .filter(a => a.classId === classId);
-  for (const a of acts) await _deleteActivity(semester, a._id);
-  await fbDelete('/' + semester + '/classes/' + classId);
-  return { ok: true };
-}
-
-// ── 활동 ───────────────────────────────────────────────────
-async function fbActivityList({ semester, classId }) {
-  const raw = await fbGet('/' + semester + '/activities');
-  return objToArr(raw)
-    .filter(a => a.classId === classId)
-    .map(a => ({ activityId: a._id, classId: a.classId,
-      title: a.title, type: a.type || 'basic',
-      description: a.description || '', url: a.url || '',
-      columnsCreated: a.columnsCreated || false, createdAt: a.createdAt }))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-}
-async function fbActivityCreate({ semester, classId, title, type, description, url = '', token }) {
-  verifyAdmin(token);
-  const id = await fbPush('/' + semester + '/activities', {
-    classId, title, type: type || 'basic',
-    description: description || '', url: url || '',
-    columnsCreated: false, createdAt: new Date().toISOString()
-  });
-  return { activityId: id };
-}
-async function fbActivityUpdate({ semester, activityId, title, type, description, url = '', token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/activities/' + activityId, {
-    title, type: type || 'basic',
-    description: description || '', url: url || '',
-    updatedAt: new Date().toISOString()
-  });
-  return { ok: true };
-}
-async function fbActivityGet({ semester, activityId }) {
-  const a = await fbGet('/' + semester + '/activities/' + activityId);
-  if (!a) throw new Error('활동을 찾을 수 없습니다.');
-  return { activityId, ...a };
-}
-async function fbActivityDelete({ semester, activityId, token }) {
-  verifyAdmin(token);
-  await _deleteActivity(semester, activityId);
-  return { ok: true };
-}
-async function _deleteActivity(semester, activityId) {
-  const groups = objToArr(await fbGet('/' + semester + '/groups'))
-    .filter(g => g.activityId === activityId);
-  for (const g of groups) await fbDelete('/' + semester + '/groups/' + g._id);
-  const posts = objToArr(await fbGet('/' + semester + '/posts'))
-    .filter(p => p.activityId === activityId);
-  for (const p of posts) await fbDelete('/' + semester + '/posts/' + p._id);
-  const links = objToArr(await fbGet('/' + semester + '/boardLinks'))
-    .filter(l => l.activityId === activityId);
-  for (const l of links) await fbDelete('/' + semester + '/boardLinks/' + l._id);
-  await fbDelete('/' + semester + '/activities/' + activityId);
-}
-
-// ── 게시판 내 자료/링크 (특정 활동 게시판 상단에 표시되는 하위 참고자료) ──
-async function fbBoardLinkList({ semester, activityId }) {
-  const raw = await fbGet('/' + semester + '/boardLinks');
-  return objToArr(raw).filter(l => l.activityId === activityId)
-    .map(l => ({ linkId: l._id, activityId: l.activityId, title: l.title, url: l.url }))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-}
-async function fbBoardLinkCreate({ semester, activityId, title, url, token }) {
-  verifyAdmin(token);
-  const id = await fbPush('/' + semester + '/boardLinks', {
-    activityId, title, url, createdAt: new Date().toISOString()
-  });
-  return { linkId: id };
-}
-async function fbBoardLinkUpdate({ semester, linkId, title, url, token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/boardLinks/' + linkId, { title, url });
-  return { ok: true };
-}
-async function fbBoardLinkDelete({ semester, linkId, token }) {
-  verifyAdmin(token);
-  await fbDelete('/' + semester + '/boardLinks/' + linkId);
-  return { ok: true };
-}
-
-// 반 게시물 일괄 삭제
-async function fbClearPostsByClass({ semester, classId, token }) {
-  verifyAdmin(token);
-  const actIds = objToArr(await fbGet('/' + semester + '/activities'))
-    .filter(a => a.classId === classId).map(a => a._id);
-  const posts = objToArr(await fbGet('/' + semester + '/posts'))
-    .filter(p => actIds.includes(p.activityId));
-  for (const p of posts) await fbDelete('/' + semester + '/posts/' + p._id);
-  return { count: posts.length };
-}
-
-// ── 조 ─────────────────────────────────────────────────────
-async function fbGroupList({ semester, activityId }) {
-  const raw = await fbGet('/' + semester + '/groups');
-  return objToArr(raw)
-    .filter(g => g.activityId === activityId)
-    .map(g => ({ groupId: g._id, activityId: g.activityId, title: g.title, order: g.order || 0 }))
-    .sort((a, b) => a.order - b.order);
-}
-async function fbMakeColumns({ semester, activityId, token }) {
-  verifyAdmin(token);
-  for (let i = 1; i <= 8; i++) {
-    await fbPush('/' + semester + '/groups', {
-      activityId, title: i + '조', order: i, createdAt: new Date().toISOString()
-    });
-  }
-  await fbPatch('/' + semester + '/activities/' + activityId, { columnsCreated: true });
-  return { ok: true };
-}
-async function fbGroupRename({ semester, groupId, title, token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/groups/' + groupId, { title });
-  return { ok: true };
-}
-
-// ── 게시물 ─────────────────────────────────────────────────
-async function fbPostList({ semester, activityId, includeHidden }) {
-  const raw = await fbGet('/' + semester + '/posts');
-  return objToArr(raw)
-    .filter(p => {
-      if (p.activityId !== activityId) return false;
-      if (p.status === 'deleted') return false;
-      if (!includeHidden && p.status === 'hidden') return false;
-      return true;
-    })
-    .map(p => ({ postId: p._id, ...p }))
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-}
-async function fbPostCreate(payload) {
-  const {
-    semester, activityId, groupId = '',
-    sid, name, type = 'basic',
-    title = '', content = '',
-    step1 = '', step2 = '', step3 = '', step4 = '', step5 = '',
-    fileBase64, fileName, fileMime
-  } = payload;
-  let fileUrl = '', fileNameSaved = '';
-  if (fileBase64 && fileName) {
-    fileUrl = await fbUploadFile(fileBase64, fileName, fileMime || 'application/octet-stream');
-    fileNameSaved = fileName;
-  }
-  const id = await fbPush('/' + semester + '/posts', {
-    activityId, groupId, sid, name, type,
-    title, content, step1, step2, step3, step4, step5,
-    fileUrl, fileName: fileNameSaved,
-    status: 'visible', createdAt: new Date().toISOString()
-  });
-  return { postId: id };
-}
-async function fbPostModerate({ semester, postId, status, token }) {
-  verifyAdmin(token);
-  await fbPatch('/' + semester + '/posts/' + postId, { status });
-  return { ok: true };
-}
-
-// ── CSV 내보내기 ────────────────────────────────────────────
-async function fbExportCsv({ semester, scope, id }) {
-  let posts = objToArr(await fbGet('/' + semester + '/posts'))
-    .filter(p => p.status !== 'deleted').map(p => ({ postId: p._id, ...p }));
-  if (scope === 'activity') posts = posts.filter(p => p.activityId === id);
-  else if (scope === 'class') {
-    const actIds = objToArr(await fbGet('/' + semester + '/activities'))
-      .filter(a => a.classId === id).map(a => a._id);
-    posts = posts.filter(p => actIds.includes(p.activityId));
-  }
-  const fields = ['postId','activityId','groupId','sid','name','type',
-    'title','content','step1','step2','step3','step4','step5','fileUrl','status','createdAt'];
-  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const csv = [fields.join(','), ...posts.map(p => fields.map(f => esc(p[f])).join(','))].join('\n');
-  return { csv, count: posts.length };
-}
-
-// ── 회원 관리 ───────────────────────────────────────────────
-async function fbPendingList({ token }) {
-  verifyAdmin(token);
-  const raw = await fbGet('/pending');
-  return objToArr(raw).map(p => ({ sid: p._id, name: p.name, requestedAt: p.requestedAt }))
-    .sort((a, b) => (a.requestedAt||'').localeCompare(b.requestedAt||''));
-}
-async function fbApprove({ sid, token }) {
-  verifyAdmin(token);
-  const pending = await fbGet('/pending/' + sid);
-  if (!pending) throw new Error('대기 중인 학생을 찾을 수 없습니다.');
-  await fbSet('/students/' + sid, {
-    name: pending.name, klass: sidToKlass(sid),
-    passwordHash: pending.passwordHash,
-    approved: true, approvedAt: new Date().toISOString()
-  });
-  await fbDelete('/pending/' + sid);
-  return { ok: true };
-}
-async function fbReject({ sid, token }) {
-  verifyAdmin(token);
-  await fbDelete('/pending/' + sid);
-  return { ok: true };
-}
-async function fbWithdraw({ sid, token }) {
-  verifyAdmin(token);
-  await fbDelete('/students/' + sid);
-  return { ok: true };
-}
-async function fbResetPassword({ sid, token }) {
-  verifyAdmin(token);
-  const student = await fbGet('/students/' + sid);
-  if (!student) throw new Error('학생을 찾을 수 없습니다.');
-  await fbPatch('/students/' + sid, { passwordHash: await sha256(sid) });
-  return { ok: true };
-}
-async function fbActiveList({ token }) {
-  verifyAdmin(token);
-  const raw = await fbGet('/students');
-  return objToArr(raw).filter(s => s.approved)
-    .map(s => ({ sid: s._id, name: s.name, klass: sidToKlass(s._id), approvedAt: s.approvedAt }))
-    .sort((a, b) => a.sid.localeCompare(b.sid));
-}
-
-// ── 교사 코드 ───────────────────────────────────────────────
-async function fbCodeList({ token }) {
-  verifyAdmin(token);
-  const raw = await fbGet('/codes');
-  return objToArr(raw).map(c => ({ codeId: c._id, value: c.value, label: c.label || '', expiresAt: c.expiresAt || '' }));
-}
-async function fbCodeCreate({ value, label, expiresAt, token }) {
-  verifyAdmin(token);
-  const id = await fbPush('/codes', { value, label: label || '', expiresAt: expiresAt || '' });
-  return { codeId: id };
-}
-async function fbCodeDelete({ codeId, token }) {
-  verifyAdmin(token);
-  await fbDelete('/codes/' + codeId);
-  return { ok: true };
+  if (d && d.error) throw new Error(d.error);
+  return d;
 }
 
 // ============================================================
