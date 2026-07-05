@@ -164,8 +164,9 @@ async function studentLogin() {
   try {
     const u = await api('auth.studentLogin', { sid, password });
     state.user = u;
+    if (u.semester) state.semester = u.semester;
     saveSession();
-    await enterApp();
+    await enterApp(!!u.semester);
     toast(`환영합니다, ${u.name} 님`, 'success');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -195,8 +196,9 @@ async function adminLogin() {
     const r = await api('auth.adminLogin', { id, password: pw });
     state.user = { admin: true, name: '관리자', sid: id };
     state.adminToken = r.token;
+    if (r.semester) state.semester = r.semester;
     saveSession();
-    await enterApp();
+    await enterApp(!!r.semester);
     toast('관리자로 로그인했습니다.', 'success');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -213,12 +215,14 @@ function stripAdminOnlyElements() {
   });
 }
 
-async function enterApp() {
-  try {
-    const m = await api('meta.activeSemester', {});
-    state.semester = m.semester;
-    saveSession();
-  } catch {}
+async function enterApp(semesterAlreadyFresh = false) {
+  if (!semesterAlreadyFresh) {
+    try {
+      const m = await api('meta.activeSemester', {});
+      state.semester = m.semester;
+      saveSession();
+    } catch {}
+  }
   $('#semester-pill').textContent = state.semester + '학기';
   const u = state.user;
   $('#user-chip').innerHTML = u.admin
@@ -720,21 +724,18 @@ async function refreshBoard() {
   // 활동을 빠르게 전환했을 때, 이전 활동의 응답이 늦게 도착해 현재 화면을
   // 덮어써버리는 경쟁 조건(race condition)을 막기 위해 요청 시점의 활동ID를 고정해둔다.
   const reqActivityId = state.cur.activityId;
+  let data;
   try {
-    const a = await api('activity.get', { semester: state.semester, activityId: reqActivityId });
-    if (state.cur.activityId !== reqActivityId) return; // 이미 다른 활동으로 이동함 → 무시
-    state.cur.columnsCreated = !!(a.columnsCreated === true || a.columnsCreated === 'true' || a.columnsCreated === 'TRUE');
-  } catch {}
-  if (state.cur.activityId !== reqActivityId) return;
+    data = await api('board.load', { semester: state.semester, activityId: reqActivityId, includeHidden: isAdmin() });
+  } catch (e) { toast(e.message, 'error'); return; }
+  if (state.cur.activityId !== reqActivityId) return; // 응답 도착 시점에 이미 다른 활동을 보고 있다면 무시
+
+  state.cur.columnsCreated = !!data.columnsCreated;
   $('#btn-add-boardlink').hidden = !isAdmin();
   $('#btn-make-columns').hidden = !(isAdmin() && !state.cur.columnsCreated);
   $('#btn-export').hidden = !isAdmin();
-  const [groups, posts, links] = await Promise.all([
-    api('group.list', { semester: state.semester, activityId: reqActivityId }),
-    api('post.list',  { semester: state.semester, activityId: reqActivityId, includeHidden: isAdmin() }),
-    api('boardlink.list', { semester: state.semester, activityId: reqActivityId })
-  ]);
-  if (state.cur.activityId !== reqActivityId) return; // 응답 도착 시점에 이미 다른 활동을 보고 있다면 무시
+
+  const groups = data.groups, posts = data.posts, links = data.links;
   renderBoardLinks(links);
   state.cur.groups = groups;
   if (state.cur.columnsCreated && groups.length > 0) {
@@ -1311,8 +1312,12 @@ function bindOnce() {
 
 (async function init() {
   bindOnce();
-  if (loadSession()) {
+  const hasSession = loadSession();
+  if (hasSession) {
     try { await enterApp(); return; } catch {}
+  } else {
+    // 로그인 전에 서버를 미리 한 번 깨워두면, 실제 로그인 시점의 지연(콜드스타트)이 줄어듭니다.
+    api('meta.activeSemester', {}).catch(() => {});
   }
   show('screen-login');
 })();
