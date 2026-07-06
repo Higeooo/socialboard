@@ -229,6 +229,10 @@ async function enterApp(semesterAlreadyFresh = false) {
     ? `<strong>관리자</strong>`
     : `<span>${escapeHtml(u.sid)}</span>&nbsp;${escapeHtml(u.name)}`;
   stripAdminOnlyElements();
+  if (isAdmin()) {
+    $('#btn-members').hidden = false;
+    $('#btn-new-class').hidden = false;
+  }
   showHome();
 }
 
